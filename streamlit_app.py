@@ -60,32 +60,32 @@ def generate_payorder_pdf(bill_data):
     # Work details
     pdf.cell(0, 5, f"on account of {bill_data['cc_bill']} for {bill_data['work_description']}", ln=1)
     pdf.cell(0, 5, f"AAA No: {bill_data['aaa_no']} Dated: {bill_data['aaa_date']} for ₹ {bill_data['aaa_amount']:,}", ln=1)
-    pdf.cell(0, 5, f"TS No: {bill_data['ts_no']} Dated: {bill_data['ts_date']} for ₹ {bill_data['ts_amount']:,}", ln=1)
-    pdf.cell(0, 5, f"Allotment No: {bill_data['allotment_no']} Dated: {bill_data['allotment_date']} for ₹ {bill_data['allotment_amount']:,}", ln=1)
+    pdf.cell(0, 5, f"TS No: {bill_data['ts_no']} Dated: {bill_data['ts_date']} for RS {bill_data['ts_amount']:,}", ln=1)
+    pdf.cell(0, 5, f"Allotment No: {bill_data['allotment_no']} Dated: {bill_data['allotment_date']} for RS {bill_data['allotment_amount']:,}", ln=1)
     pdf.ln(5)
     
     # Financial details
-    pdf.cell(0, 5, f"Billed Amount = ₹ {bill_data['billed_amount']:,}", ln=1)
-    pdf.cell(0, 5, f"Deduct Last Payments = ₹ {bill_data['deduct_payments']:,}", ln=1)
-    pdf.cell(0, 5, f"Payable Amount = ₹ {bill_data['payable']:,}", ln=1)
-    pdf.cell(0, 5, f"Restricted to = ₹ {bill_data['restricted_to']:,}", ln=1)
+    pdf.cell(0, 5, f"Billed Amount = RS {bill_data['billed_amount']:,}", ln=1)
+    pdf.cell(0, 5, f"Deduct Last Payments = RS {bill_data['deduct_payments']:,}", ln=1)
+    pdf.cell(0, 5, f"Payable Amount = RS {bill_data['payable']:,}", ln=1)
+    pdf.cell(0, 5, f"Restricted to = RS {bill_data['restricted_to']:,}", ln=1)
     pdf.ln(5)
     
     # Payment details
-    pdf.cell(0, 5, f"Passed for an amount of ₹ {bill_data['net_amount']:,} (Rupees {bill_data['amount_in_words']} Only)", ln=1)
-    pdf.cell(0, 5, f"but debit ₹ {bill_data['payable']:,} to Major Head {bill_data['major_head']}-JJM, Scheme {bill_data['scheme_name']}", ln=1)
-    pdf.cell(0, 5, f"having IMIS Code {bill_data['imis_code']} crediting ₹ {bill_data['income_tax_amount']:,} to Income Tax,", ln=1)
-    pdf.cell(0, 5, f"₹ {bill_data['deposit_amount']:,} to Deposit, ₹ 0 to GST and ₹ {bill_data['cess_amount']:,} to Labour Cess.", ln=1)
+    pdf.cell(0, 5, f"Passed for an amount of RS {bill_data['net_amount']:,} (Rupees {bill_data['amount_in_words']} Only)", ln=1)
+    pdf.cell(0, 5, f"but debit RS {bill_data['payable']:,} to Major Head {bill_data['major_head']}-JJM, Scheme {bill_data['scheme_name']}", ln=1)
+    pdf.cell(0, 5, f"having IMIS Code {bill_data['imis_code']} crediting RS {bill_data['income_tax_amount']:,} to Income Tax,", ln=1)
+    pdf.cell(0, 5, f"RS {bill_data['deposit_amount']:,} to Deposit, RS 0 to GST and RS {bill_data['cess_amount']:,} to Labour Cess.", ln=1)
     pdf.ln(5)
     
     # Deductions section
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, "DEDUCTIONS", ln=1)
     pdf.set_font("Arial", size=10)
-    pdf.cell(0, 5, f"Cess @ {bill_data['cess_percent']}% = ₹ {bill_data['cess_amount']:,}", ln=1)
-    pdf.cell(0, 5, f"I/Tax @ {bill_data['income_tax_percent']}% = ₹ {bill_data['income_tax_amount']:,}", ln=1)
-    pdf.cell(0, 5, f"Deposit @ {bill_data['deposit_percent']}% = ₹ {bill_data['deposit_amount']:,}", ln=1)
-    pdf.cell(0, 5, f"TOTAL Deduction = ₹ {bill_data['total_deduction']:,}", ln=1)
+    pdf.cell(0, 5, f"Cess @ {bill_data['cess_percent']}% = RS {bill_data['cess_amount']:,}", ln=1)
+    pdf.cell(0, 5, f"I/Tax @ {bill_data['income_tax_percent']}% = RS {bill_data['income_tax_amount']:,}", ln=1)
+    pdf.cell(0, 5, f"Deposit @ {bill_data['deposit_percent']}% = RS {bill_data['deposit_amount']:,}", ln=1)
+    pdf.cell(0, 5, f"TOTAL Deduction = RS {bill_data['total_deduction']:,}", ln=1)
     pdf.ln(5)
     
     # Signature blocks
@@ -103,16 +103,16 @@ def generate_payorder_pdf(bill_data):
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, "BUDGET CONTROL", ln=1)
     pdf.set_font("Arial", size=10)
-    pdf.cell(0, 5, f"BUDGET = ₹ {bill_data['budget']:,}", ln=1)
-    pdf.cell(0, 5, f"EXPENDITURE = ₹ {bill_data['expenditure']:,}", ln=1)
-    pdf.cell(0, 5, f"BALANCE = ₹ {bill_data['balance']:,}", ln=1)
+    pdf.cell(0, 5, f"BUDGET = RS {bill_data['budget']:,}", ln=1)
+    pdf.cell(0, 5, f"EXPENDITURE = RS {bill_data['expenditure']:,}", ln=1)
+    pdf.cell(0, 5, f"BALANCE = RS {bill_data['balance']:,}", ln=1)
     pdf.ln(10)
     
     # Certification section
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, "CERTIFICATE", ln=1)
     pdf.set_font("Arial", size=10)
-    pdf.multi_cell(0, 5, f"This is to certify that an amount of ₹ {bill_data['gross_amount']:,} (Rupees {bill_data['amount_in_words']} Only) is to be debited from SNA amount of {bill_data['scheme_name']} under JJM code in IMIS {bill_data['imis_code']} for which PPA has been generated after observing all codal formalities/guidelines of the programme. The payment should be made as per the following breakup:")
+    pdf.multi_cell(0, 5, f"This is to certify that an amount of RS {bill_data['gross_amount']:,} (Rupees {bill_data['amount_in_words']} Only) is to be debited from SNA amount of {bill_data['scheme_name']} under JJM code in IMIS {bill_data['imis_code']} for which PPA has been generated after observing all codal formalities/guidelines of the programme. The payment should be made as per the following breakup:")
     pdf.ln(5)
     
     # Payment breakdown table
@@ -123,27 +123,27 @@ def generate_payorder_pdf(bill_data):
     pdf.cell(col_widths[3], 10, "Total", border=1, ln=1)
     
     pdf.cell(col_widths[0], 10, "", border=1)
-    pdf.cell(col_widths[1], 10, f"₹ {bill_data['central_share']:,}", border=1)
-    pdf.cell(col_widths[2], 10, f"₹ {bill_data['ut_share']:,}", border=1)
-    pdf.cell(col_widths[3], 10, f"₹ {bill_data['gross_amount']:,}", border=1, ln=1)
+    pdf.cell(col_widths[1], 10, f"RS {bill_data['central_share']:,}", border=1)
+    pdf.cell(col_widths[2], 10, f"RS {bill_data['ut_share']:,}", border=1)
+    pdf.cell(col_widths[3], 10, f"RS {bill_data['gross_amount']:,}", border=1, ln=1)
     
     pdf.cell(sum(col_widths[:3]), 10, "Income Tax", border=1)
-    pdf.cell(col_widths[3], 10, f"₹ {bill_data['income_tax_amount']:,}", border=1, ln=1)
+    pdf.cell(col_widths[3], 10, f"RS {bill_data['income_tax_amount']:,}", border=1, ln=1)
     
     pdf.cell(sum(col_widths[:3]), 10, "Labour Cess", border=1)
-    pdf.cell(col_widths[3], 10, f"₹ {bill_data['cess_amount']:,}", border=1, ln=1)
+    pdf.cell(col_widths[3], 10, f"RS {bill_data['cess_amount']:,}", border=1, ln=1)
     
     pdf.cell(sum(col_widths[:3]), 10, "GST", border=1)
-    pdf.cell(col_widths[3], 10, "₹ 0", border=1, ln=1)
+    pdf.cell(col_widths[3], 10, "RS 0", border=1, ln=1)
     
     pdf.cell(sum(col_widths[:3]), 10, "Deposit", border=1)
-    pdf.cell(col_widths[3], 10, f"₹ {bill_data['deposit_amount']:,}", border=1, ln=1)
+    pdf.cell(col_widths[3], 10, f"RS {bill_data['deposit_amount']:,}", border=1, ln=1)
     
     pdf.cell(sum(col_widths[:3]), 10, "Additional Deposit", border=1)
     pdf.cell(col_widths[3], 10, "", border=1, ln=1)
     
     pdf.cell(sum(col_widths[:3]), 10, "Net payable to Agency", border=1)
-    pdf.cell(col_widths[3], 10, f"₹ {bill_data['net_amount']:,}", border=1, ln=1)
+    pdf.cell(col_widths[3], 10, f"RS {bill_data['net_amount']:,}", border=1, ln=1)
     
     pdf.ln(15)
     

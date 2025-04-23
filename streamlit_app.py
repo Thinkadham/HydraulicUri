@@ -33,8 +33,12 @@ def generate_payorder_pdf(bill_data):
     pdf = FPDF()
     pdf.add_page()
     
-    # Set font and styles
-    pdf.set_font("Arial", size=10)
+   # Add the DejaVu fonts
+    pdf.add_font('DejaVu', '', 'fonts/DejaVuSans.ttf', uni=True)
+    pdf.add_font('DejaVu', 'B', 'fonts/DejaVuSans-Bold.ttf', uni=True)
+    
+    # Set the font
+    pdf.set_font('DejaVu', '', 10)
     
     # Header with timestamp
     pdf.cell(0, 5, f"Time Stamp {datetime.datetime.now().strftime('%d-%m-%Y %I:%M:%S %p')}", ln=1, align='R')

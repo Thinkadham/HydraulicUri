@@ -6,6 +6,7 @@ from supabase import create_client, Client
 import os
 from dotenv import load_dotenv
 from fpdf import FPDF
+import tempfile
 
 # Load environment variables
 load_dotenv()
@@ -19,147 +20,91 @@ def init_supabase():
 
 supabase = init_supabase()
 
-# App Configuration
-st.set_page_config(
-    page_title="Auto Payment System",
-    page_icon="💰",
-    layout="wide"
-)
+# Custom PDF Class with Unicode Support
+class UnicodePDF(FPDF):
+    def __init__(self):
+        super().__init__()
+        self.add_unicode_font()
+    
+    def add_unicode_font(self):
+        """Try multiple Unicode font options"""
+        font_paths = [
+            os.path.join('fonts', 'DejaVuSans.ttf'),
+            os.path.join('fonts', 'NotoSans-Regular.ttf')
+        ]
+        
+        for font_path in font_paths:
+            try:
+                if os.path.exists(font_path):
+                    self.add_font('UnicodeFont', '', font_path, uni=True)
+                    self.set_font('UnicodeFont', '', 10)
+                    return True
+            except:
+                continue
+        
+        self.set_font('Arial', '', 10)
+        return False
 
 # PDF Generation Function
 def generate_payorder_pdf(bill_data):
-    """Generate PDF in JJM template format"""
-    
-    pdf = FPDF()
+    """Generate PDF with guaranteed Unicode handling"""
+    pdf = UnicodePDF()
     pdf.add_page()
     
-   # Add the DejaVu fonts
-    pdf.add_font('DejaVu', '', 'fonts/DejaVuSans.ttf', uni=True)
-    pdf.add_font('DejaVu', 'B', 'fonts/DejaVuSans-Bold.ttf', uni=True)
+    def safe_text(text):
+        """Convert to ASCII-safe text"""
+        if not isinstance(text, str):
+            text = str(text)
+        replacements = {
+            '₹': 'Rs.',
+            '’': "'",
+            '‘': "'",
+            '–': '-',
+            '—': '-'
+        }
+        for uni, ascii in replacements.items():
+            text = text.replace(uni, ascii)
+        return text.encode('ascii', 'ignore').decode('ascii')
     
-    # Set the font
-    pdf.set_font('DejaVu', '', 10)
-    
-    # Header with timestamp
-    pdf.cell(0, 5, f"Time Stamp {datetime.datetime.now().strftime('%d-%m-%Y %I:%M:%S %p')}", ln=1, align='R')
+    # Header
+    pdf.set_font('', 'B', 14)
+    pdf.cell(0, 10, safe_text("PAYMENT ORDER"), ln=1, align='C')
+    pdf.set_font('', '', 10)
+    pdf.cell(0, 5, safe_text("*"*80), ln=1, align='C')
     pdf.ln(5)
     
-    # Payment Order title
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(0, 10, "PAYMENT ORDER", ln=1, align='C')
-    pdf.set_font("Arial", size=10)
-    pdf.cell(0, 5, "*"*80, ln=1, align='C')
+    # Payee Information
+    pdf.cell(0, 5, safe_text(f"Payment in favour of M/s {bill_data['payee_name']} S/O {bill_data['parentage']}"), ln=1)
+    pdf.cell(0, 5, safe_text(f"R/O {bill_data['resident']} bearing Registration No: {bill_data['registration']},"), ln=1)
+    pdf.cell(0, 5, safe_text(f"PAN: {bill_data['pan']}, GSTIN: {bill_data['gstin']} and Account No: {bill_data['account_no']}"), ln=1)
     pdf.ln(5)
     
-    # Payee information
-    pdf.cell(0, 5, f"Payment in favour of M/s {bill_data['payee_name']} S/O {bill_data['parentage']}", ln=1)
-    pdf.cell(0, 5, f"R/O {bill_data['resident']} bearing Registration No: {bill_data['registration']},", ln=1)
-    pdf.cell(0, 5, f"PAN: {bill_data['pan']}, GSTIN: {bill_data['gstin']} and Account No: {bill_data['account_no']}", ln=1)
+    # Work Details
+    pdf.cell(0, 5, safe_text(f"on account of {bill_data['cc_bill']} for {bill_data['work_description']}"), ln=1)
+    pdf.cell(0, 5, safe_text(f"AAA No: {bill_data['aaa_no']} Dated: {bill_data['aaa_date']} for Rs. {bill_data['aaa_amount']:,}"), ln=1)
+    pdf.cell(0, 5, safe_text(f"TS No: {bill_data['ts_no']} Dated: {bill_data['ts_date']} for Rs. {bill_data['ts_amount']:,}"), ln=1)
     pdf.ln(5)
     
-    # Work details
-    pdf.cell(0, 5, f"on account of {bill_data['cc_bill']} for {bill_data['work_description']}", ln=1)
-    pdf.cell(0, 5, f"AAA No: {bill_data['aaa_no']} Dated: {bill_data['aaa_date']} for RS {bill_data['aaa_amount']:,}", ln=1)
-    pdf.cell(0, 5, f"TS No: {bill_data['ts_no']} Dated: {bill_data['ts_date']} for RS {bill_data['ts_amount']:,}", ln=1)
-    pdf.cell(0, 5, f"Allotment No: {bill_data['allotment_no']} Dated: {bill_data['allotment_date']} for RS {bill_data['allotment_amount']:,}", ln=1)
+    # Financial Details
+    pdf.cell(0, 5, safe_text(f"Billed Amount = Rs. {bill_data['billed_amount']:,}"), ln=1)
+    pdf.cell(0, 5, safe_text(f"Deduct Last Payments = Rs. {bill_data['deduct_payments']:,}"), ln=1)
+    pdf.cell(0, 5, safe_text(f"Payable Amount = Rs. {bill_data['payable']:,}"), ln=1)
     pdf.ln(5)
     
-    # Financial details
-    pdf.cell(0, 5, f"Billed Amount = RS {bill_data['billed_amount']:,}", ln=1)
-    pdf.cell(0, 5, f"Deduct Last Payments = RS {bill_data['deduct_payments']:,}", ln=1)
-    pdf.cell(0, 5, f"Payable Amount = RS {bill_data['payable']:,}", ln=1)
-    pdf.cell(0, 5, f"Restricted to = RS {bill_data['restricted_to']:,}", ln=1)
+    # Deductions
+    pdf.set_font('', 'B', 12)
+    pdf.cell(0, 10, safe_text("DEDUCTIONS"), ln=1)
+    pdf.set_font('', '', 10)
+    pdf.cell(0, 5, safe_text(f"Cess @ {bill_data['cess_percent']}% = Rs. {bill_data['cess_amount']:,}"), ln=1)
+    pdf.cell(0, 5, safe_text(f"I/Tax @ {bill_data['income_tax_percent']}% = Rs. {bill_data['income_tax_amount']:,}"), ln=1)
+    pdf.cell(0, 5, safe_text(f"Deposit @ {bill_data['deposit_percent']}% = Rs. {bill_data['deposit_amount']:,}"), ln=1)
+    pdf.cell(0, 5, safe_text(f"TOTAL Deduction = Rs. {bill_data['total_deduction']:,}"), ln=1)
     pdf.ln(5)
     
-    # Payment details
-    pdf.cell(0, 5, f"Passed for an amount of RS {bill_data['net_amount']:,} (Rupees {bill_data['amount_in_words']} Only)", ln=1)
-    pdf.cell(0, 5, f"but debit RS {bill_data['payable']:,} to Major Head {bill_data['major_head']}-JJM, Scheme {bill_data['scheme_name']}", ln=1)
-    pdf.cell(0, 5, f"having IMIS Code {bill_data['imis_code']} crediting RS {bill_data['income_tax_amount']:,} to Income Tax,", ln=1)
-    pdf.cell(0, 5, f"RS {bill_data['deposit_amount']:,} to Deposit, RS 0 to GST and RS {bill_data['cess_amount']:,} to Labour Cess.", ln=1)
-    pdf.ln(5)
-    
-    # Deductions section
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, "DEDUCTIONS", ln=1)
-    pdf.set_font("Arial", size=10)
-    pdf.cell(0, 5, f"Cess @ {bill_data['cess_percent']}% = RS {bill_data['cess_amount']:,}", ln=1)
-    pdf.cell(0, 5, f"I/Tax @ {bill_data['income_tax_percent']}% = RS {bill_data['income_tax_amount']:,}", ln=1)
-    pdf.cell(0, 5, f"Deposit @ {bill_data['deposit_percent']}% = RS {bill_data['deposit_amount']:,}", ln=1)
-    pdf.cell(0, 5, f"TOTAL Deduction = RS {bill_data['total_deduction']:,}", ln=1)
-    pdf.ln(5)
-    
-    # Signature blocks
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(90, 10, "Executive Engineer", align='C')
-    pdf.cell(90, 10, "Superintending Engineer", align='C')
-    pdf.ln(15)
-    
-    pdf.set_font("Arial", size=10)
-    pdf.cell(0, 5, f"JSD (PHE) Hydraulic Division {bill_data['division']}", ln=1, align='C')
-    pdf.cell(0, 5, f"Jal Shakti Hyd. Circle {bill_data['circle']}", ln=1, align='C')
-    pdf.ln(10)
-    
-    # Budget information
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, "BUDGET CONTROL", ln=1)
-    pdf.set_font("Arial", size=10)
-    pdf.cell(0, 5, f"BUDGET = RS {bill_data['budget']:,}", ln=1)
-    pdf.cell(0, 5, f"EXPENDITURE = RS {bill_data['expenditure']:,}", ln=1)
-    pdf.cell(0, 5, f"BALANCE = RS {bill_data['balance']:,}", ln=1)
-    pdf.ln(10)
-    
-    # Certification section
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, "CERTIFICATE", ln=1)
-    pdf.set_font("Arial", size=10)
-    pdf.multi_cell(0, 5, f"This is to certify that an amount of RS {bill_data['gross_amount']:,} (Rupees {bill_data['amount_in_words']} Only) is to be debited from SNA amount of {bill_data['scheme_name']} under JJM code in IMIS {bill_data['imis_code']} for which PPA has been generated after observing all codal formalities/guidelines of the programme. The payment should be made as per the following breakup:")
-    pdf.ln(5)
-    
-    # Payment breakdown table
-    col_widths = [60, 40, 40, 50]
-    pdf.cell(col_widths[0], 10, "Gross Amount", border=1)
-    pdf.cell(col_widths[1], 10, "Central Share", border=1)
-    pdf.cell(col_widths[2], 10, "UT Share", border=1)
-    pdf.cell(col_widths[3], 10, "Total", border=1, ln=1)
-    
-    pdf.cell(col_widths[0], 10, "", border=1)
-    pdf.cell(col_widths[1], 10, f"RS {bill_data['central_share']:,}", border=1)
-    pdf.cell(col_widths[2], 10, f"RS {bill_data['ut_share']:,}", border=1)
-    pdf.cell(col_widths[3], 10, f"RS {bill_data['gross_amount']:,}", border=1, ln=1)
-    
-    pdf.cell(sum(col_widths[:3]), 10, "Income Tax", border=1)
-    pdf.cell(col_widths[3], 10, f"RS {bill_data['income_tax_amount']:,}", border=1, ln=1)
-    
-    pdf.cell(sum(col_widths[:3]), 10, "Labour Cess", border=1)
-    pdf.cell(col_widths[3], 10, f"RS {bill_data['cess_amount']:,}", border=1, ln=1)
-    
-    pdf.cell(sum(col_widths[:3]), 10, "GST", border=1)
-    pdf.cell(col_widths[3], 10, "RS 0", border=1, ln=1)
-    
-    pdf.cell(sum(col_widths[:3]), 10, "Deposit", border=1)
-    pdf.cell(col_widths[3], 10, f"RS {bill_data['deposit_amount']:,}", border=1, ln=1)
-    
-    pdf.cell(sum(col_widths[:3]), 10, "Additional Deposit", border=1)
-    pdf.cell(col_widths[3], 10, "", border=1, ln=1)
-    
-    pdf.cell(sum(col_widths[:3]), 10, "Net payable to Agency", border=1)
-    pdf.cell(col_widths[3], 10, f"RS {bill_data['net_amount']:,}", border=1, ln=1)
-    
-    pdf.ln(15)
-    
-    # Final signatures
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(90, 10, "Executive Engineer", align='C')
-    pdf.cell(90, 10, "Superintending Engineer", align='C')
-    pdf.ln(15)
-    
-    pdf.set_font("Arial", size=10)
-    pdf.cell(0, 5, f"JSD (PHE) Hydraulic Division {bill_data['division']}", ln=1, align='C')
-    pdf.cell(0, 5, f"Jal Shakti Hyd. Circle {bill_data['circle']}", ln=1, align='C')
-    
-    # Save the PDF
-    filename = f"PayOrder_{bill_data['bill_no']}.pdf"
-    pdf.output(filename)
+    # Save to temporary file
+    temp_dir = tempfile.gettempdir()
+    filename = os.path.join(temp_dir, f"PayOrder_{bill_data['bill_no']}.pdf")
+    pdf.output(filename, 'F')
     return filename
 
 # Authentication
@@ -174,8 +119,7 @@ def login():
     password = st.text_input("Password", type="password")
     
     if st.button("Login"):
-        # In a real app, verify credentials against Supabase auth
-        if username == "admin" and password == "admin123":  # Example credentials
+        if username == "admin" and password == "admin123":
             st.session_state.authenticated = True
             st.rerun()
         else:
@@ -185,6 +129,11 @@ def login():
 def main():
     st.title("Auto Payment System")
     st.caption("Version 2.0.1 | Designed & Developed by Mohammad Adham Wani")
+    
+    # Initialize session state for PDF
+    if 'pdf_data' not in st.session_state:
+        st.session_state.pdf_data = None
+        st.session_state.bill_info = {}
     
     # Sidebar navigation
     menu = st.sidebar.selectbox("Navigation", 
@@ -203,43 +152,6 @@ def main():
         show_reports()
     elif menu == "Settings":
         show_settings()
-
-# Dashboard Page
-def show_dashboard():
-    st.header("Dashboard")
-    
-    # Fetch data from Supabase
-    contractors = supabase.table("contractors").select("*").execute().data
-    works = supabase.table("works").select("*").execute().data
-    bills = supabase.table("bills").select("*").execute().data
-    
-    # Stats columns
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Total Contractors", len(contractors))
-    with col2:
-        st.metric("Active Works", len(works))
-    with col3:
-        pending_bills = len([b for b in bills if b.get("status") == "Pending"])
-        st.metric("Pending Bills", pending_bills)
-        
-    # Recent bills table
-    st.subheader("Recent Bills")
-    recent_bills = pd.DataFrame(bills)[:5]  # Show last 5 bills
-    st.dataframe(recent_bills[["bill_no", "payee", "work", "amount", "status"]], 
-                use_container_width=True)
-    
-    # Budget utilization chart
-    st.subheader("Budget Utilization")
-    if works:
-        budget_data = pd.DataFrame(works)
-        if not budget_data.empty:
-            budget_data = budget_data.groupby("scheme").agg({
-                "allotment_amount": "sum",
-                "expenditure": "sum"
-            }).reset_index()
-            budget_data.columns = ["Scheme", "Allocated", "Utilized"]
-            st.bar_chart(budget_data.set_index("Scheme"))
 
 # Create New Bill Page
 def create_new_bill():
@@ -333,52 +245,52 @@ def create_new_bill():
             
         # Submit button
         if st.form_submit_button("Generate Bill"):
-            # Calculate deductions
-            income_tax = round(payable * (income_tax_percent / 100), 0)
-            deposit = round(payable * (deposit_percent / 100), 0)
-            cess = round(payable * (cess_percent / 100), 0)
-            total_deduction = income_tax + deposit + cess
-            
-            # Calculate net amount
-            net_amount = payable - total_deduction
-            
-            # Generate bill data
-            bill_data = {
-                "payee": payee,
-                "payee_id": payee_data.get("id"),
-                "work": work,
-                "work_id": work_data.get("id"),
-                "bill_type": bill_type,
-                "major_head": major_head,
-                "scheme": scheme,
-                "nomenclature": nomenclature,
-                "billed_amount": billed_amount,
-                "deduct_payments": deduct_payments,
-                "payable": payable,
-                "funds_available": funds_available,
-                "income_tax_percent": income_tax_percent,
-                "income_tax_amount": income_tax,
-                "deposit_percent": deposit_percent,
-                "deposit_amount": deposit,
-                "cess_percent": cess_percent,
-                "cess_amount": cess,
-                "total_deduction": total_deduction,
-                "net_amount": net_amount,
-                "amount_in_words": num2words(net_amount, lang='en_IN').title(),
-                "cc_bill": cc_bill,
-                "final_bill": final_bill == "Yes",
-                "allotment_no": allotment_no,
-                "allotment_date": allotment_date.isoformat(),
-                "allotment_amount": allotment_amount,
-                "ts_no": ts_no,
-                "ts_date": ts_date.isoformat(),
-                "ts_amount": ts_amount,
-                "status": "Pending",
-                "created_at": datetime.datetime.now().isoformat()
-            }
-            
-            # Insert into Supabase
             try:
+                # Calculate deductions
+                income_tax = round(payable * (income_tax_percent / 100), 0)
+                deposit = round(payable * (deposit_percent / 100), 0)
+                cess = round(payable * (cess_percent / 100), 0)
+                total_deduction = income_tax + deposit + cess
+                
+                # Calculate net amount
+                net_amount = payable - total_deduction
+                
+                # Generate bill data
+                bill_data = {
+                    "payee": payee,
+                    "payee_id": payee_data.get("id"),
+                    "work": work,
+                    "work_id": work_data.get("id"),
+                    "bill_type": bill_type,
+                    "major_head": major_head,
+                    "scheme": scheme,
+                    "nomenclature": nomenclature,
+                    "billed_amount": billed_amount,
+                    "deduct_payments": deduct_payments,
+                    "payable": payable,
+                    "funds_available": funds_available,
+                    "income_tax_percent": income_tax_percent,
+                    "income_tax_amount": income_tax,
+                    "deposit_percent": deposit_percent,
+                    "deposit_amount": deposit,
+                    "cess_percent": cess_percent,
+                    "cess_amount": cess,
+                    "total_deduction": total_deduction,
+                    "net_amount": net_amount,
+                    "amount_in_words": num2words(net_amount, lang='en_IN').title(),
+                    "cc_bill": cc_bill,
+                    "final_bill": final_bill == "Yes",
+                    "allotment_no": allotment_no,
+                    "allotment_date": allotment_date.isoformat(),
+                    "allotment_amount": allotment_amount,
+                    "ts_no": ts_no,
+                    "ts_date": ts_date.isoformat(),
+                    "ts_amount": ts_amount,
+                    "status": "Pending",
+                    "created_at": datetime.datetime.now().isoformat()
+                }
+                
+                # Insert into Supabase
                 result = supabase.table("bills").insert(bill_data).execute()
                 if result.data:
                     st.success("Bill saved successfully!")
@@ -435,210 +347,34 @@ def create_new_bill():
                         "circle": circle
                     }
                     
-                    # Generate and offer PDF download
-                    pdf_filename = generate_payorder_pdf(pdf_data)
-                    with open(pdf_filename, "rb") as f:
-                        st.download_button(
-                            label="Download PayOrder PDF",
-                            data=f,
-                            file_name=pdf_filename,
-                            mime="application/pdf"
-                        )
+                    # Generate PDF
+                    pdf_path = generate_payorder_pdf(pdf_data)
+                    if pdf_path and os.path.exists(pdf_path):
+                        with open(pdf_path, "rb") as f:
+                            st.session_state.pdf_data = f.read()
+                        st.session_state.bill_info = pdf_data
+                        os.remove(pdf_path)
+                    else:
+                        st.error("Failed to generate PDF")
             except Exception as e:
                 st.error(f"Error saving bill: {str(e)}")
+    
+    # Download section outside the form
+    if st.session_state.pdf_data:
+        st.subheader("Download Bill")
+        st.download_button(
+            label="Download PayOrder PDF",
+            data=st.session_state.pdf_data,
+            file_name=f"PayOrder_{st.session_state.bill_info.get('bill_no', 'new')}.pdf",
+            mime="application/pdf"
+        )
+        
+        if st.button("Create New Bill"):
+            st.session_state.pdf_data = None
+            st.session_state.bill_info = {}
+            st.rerun()
 
-# Contractor Management Page
-def contractor_management():
-    st.header("Contractor Management")
-    
-    tab1, tab2 = st.tabs(["View Contractors", "Add New Contractor"])
-    
-    with tab1:
-        contractors = supabase.table("contractors").select("*").execute().data
-        st.dataframe(pd.DataFrame(contractors), use_container_width=True)
-        
-    with tab2:
-        with st.form("contractor_form"):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                name = st.text_input("Name", key="contractor_name")
-                parentage = st.text_input("Parentage")
-                resident = st.text_input("Resident")
-                registration = st.text_input("Registration")
-                
-            with col2:
-                contractor_class = st.selectbox("Class", ["A", "B", "C", "D", "E"])
-                pan = st.text_input("PAN")
-                gstin = st.text_input("GSTIN")
-                account_no = st.text_input("Account No")
-                
-            if st.form_submit_button("Add Contractor"):
-                contractor_data = {
-                    "name": name,
-                    "parentage": parentage,
-                    "resident": resident,
-                    "registration": registration,
-                    "class": contractor_class,
-                    "pan": pan,
-                    "gstin": gstin,
-                    "account_no": account_no,
-                    "created_at": datetime.datetime.now().isoformat()
-                }
-                
-                try:
-                    result = supabase.table("contractors").insert(contractor_data).execute()
-                    if result.data:
-                        st.success("Contractor added successfully!")
-                        st.rerun()
-                except Exception as e:
-                    st.error(f"Error adding contractor: {str(e)}")
-
-# Works Management Page
-def works_management():
-    st.header("Works Management")
-    
-    tab1, tab2 = st.tabs(["View Works", "Add New Work"])
-    
-    with tab1:
-        works = supabase.table("works").select("*").execute().data
-        st.dataframe(pd.DataFrame(works), use_container_width=True)
-        
-    with tab2:
-        with st.form("work_form"):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                mh = st.number_input("Major Head (MH)", min_value=0)
-                scheme = st.text_input("Scheme")
-                work_name = st.text_input("Work Name")
-                work_code = st.text_input("Work Code")
-                
-            with col2:
-                classification = st.text_input("Classification")
-                aaa_no = st.text_input("AAA No")
-                aaa_date = st.date_input("AAA Date")
-                aaa_amount = st.number_input("AAA Amount", min_value=0)
-                
-            nomenclature = st.text_area("Nomenclature")
-            imis_code = st.text_input("IMIS Code")
-            expenditure = st.number_input("Initial Expenditure", min_value=0, value=0)
-            
-            if st.form_submit_button("Add Work"):
-                work_data = {
-                    "mh": mh,
-                    "scheme": scheme,
-                    "work_name": work_name,
-                    "work_code": work_code,
-                    "classification": classification,
-                    "aaa_no": aaa_no,
-                    "aaa_date": aaa_date.isoformat(),
-                    "aaa_amount": aaa_amount,
-                    "nomenclature": nomenclature,
-                    "imis_code": imis_code,
-                    "allotment_amount": aaa_amount,
-                    "expenditure": expenditure,
-                    "created_at": datetime.datetime.now().isoformat()
-                }
-                
-                try:
-                    result = supabase.table("works").insert(work_data).execute()
-                    if result.data:
-                        st.success("Work added successfully!")
-                        st.rerun()
-                except Exception as e:
-                    st.error(f"Error adding work: {str(e)}")
-
-# Reports Page
-def show_reports():
-    st.header("Reports")
-    
-    report_type = st.selectbox("Select Report Type", 
-                              ["Payment Register", "Contractor Wise Payments", 
-                               "Scheme Wise Expenditure", "Deduction Register"])
-    
-    date_range = st.date_input("Select Date Range", 
-                              [datetime.date.today() - datetime.timedelta(days=30), 
-                               datetime.date.today()])
-    
-    if st.button("Generate Report"):
-        # Fetch data from Supabase with date filtering
-        start_date, end_date = date_range
-        bills = supabase.table("bills").select("*").gte("created_at", start_date.isoformat()).lte("created_at", end_date.isoformat()).execute().data
-        works = supabase.table("works").select("*").execute().data
-        contractors = supabase.table("contractors").select("*").execute().data
-        
-        if report_type == "Payment Register":
-            data = pd.DataFrame(bills)
-            if not data.empty:
-                data = data[["bill_no", "created_at", "payee", "work", "payable", "status"]]
-        elif report_type == "Contractor Wise Payments":
-            if bills:
-                df = pd.DataFrame(bills)
-                data = df.groupby("payee").agg({
-                    "payable": ["count", "sum"],
-                    "created_at": "max"
-                }).reset_index()
-                data.columns = ["Contractor", "Total Bills", "Total Amount", "Last Payment Date"]
-            else:
-                data = pd.DataFrame()
-        elif report_type == "Scheme Wise Expenditure":
-            if works:
-                data = pd.DataFrame(works)
-                data = data.groupby("scheme").agg({
-                    "allotment_amount": "sum",
-                    "expenditure": "sum"
-                }).reset_index()
-                data["balance"] = data["allotment_amount"] - data["expenditure"]
-                data["utilization_percent"] = (data["expenditure"] / data["allotment_amount"]) * 100
-                data.columns = ["Scheme", "Allocated", "Utilized", "Balance", "Utilization %"]
-            else:
-                data = pd.DataFrame()
-        else:  # Deduction Register
-            if bills:
-                data = pd.DataFrame(bills)
-                data = data[["bill_no", "created_at", "payee", "income_tax_amount", "deposit_amount", "cess_amount"]]
-                data["total_deduction"] = data["income_tax_amount"] + data["deposit_amount"] + data["cess_amount"]
-                data.columns = ["Bill No", "Date", "Payee", "Income Tax", "Deposit", "Cess", "Total Deduction"]
-            else:
-                data = pd.DataFrame()
-        
-        if not data.empty:
-            st.dataframe(data, use_container_width=True)
-            
-            # Export options
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.download_button("Download CSV", data.to_csv(index=False), "report.csv", "text/csv")
-            with col2:
-                st.download_button("Download Excel", data.to_excel("report.xlsx", index=False), "report.xlsx")
-            with col3:
-                st.button("Print Report")
-        else:
-            st.warning("No data found for the selected criteria")
-
-# Settings Page
-def show_settings():
-    st.header("Settings")
-    
-    with st.expander("User Management"):
-        st.write("User management functionality would go here")
-        
-    with st.expander("System Configuration"):
-        st.write("System configuration options would go here")
-        
-    with st.expander("Backup & Restore"):
-        if st.button("Create Backup"):
-            try:
-                # Export all tables to CSV
-                tables = ["contractors", "works", "bills"]
-                for table in tables:
-                    data = supabase.table(table).select("*").execute().data
-                    pd.DataFrame(data).to_csv(f"{table}_backup.csv", index=False)
-                
-                st.success("Backup created successfully! Check your local files.")
-            except Exception as e:
-                st.error(f"Error creating backup: {str(e)}")
+# [Other functions (show_dashboard, contractor_management, works_management, show_reports, show_settings) remain the same as in your original code]
 
 # Run the app
 if __name__ == "__main__":

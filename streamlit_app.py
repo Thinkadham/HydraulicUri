@@ -1,6 +1,6 @@
 import streamlit as st
-from auth import check_auth, login
-from pages import (
+from hydraulicuri.auth import check_auth, login
+from hydraulicuri.pages import (
     show_dashboard,
     show_create_bill,
     show_contractors,

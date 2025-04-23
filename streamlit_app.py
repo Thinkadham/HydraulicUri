@@ -38,6 +38,6 @@ def main():
         show_reports()
     elif menu == "Settings":
         show_settings()
-
+pass
 if __name__ == "__main__":
     main()

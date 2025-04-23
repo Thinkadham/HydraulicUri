@@ -307,7 +307,7 @@ def monthly_reports(conn):
     
     report_date = datetime(year, month, 1)
     start_date = report_date.strftime("%Y-%m-%d")
-    end_date = (report_date.replace(month=report_date.month + 1) if report_date.month < 12 else report_date.replace(year=report_date.year + 1, month=1)
+    end_date = (report_date.replace(month=report_date.month + 1) if report_date.month < 12 else report_date.replace(year=report_date.year + 1, month=1))
     end_date = end_date.strftime("%Y-%m-%d")
     
     if st.button("Generate Report"):

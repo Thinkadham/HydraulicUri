@@ -2,3 +2,4 @@ streamlit
 num2words
 supabase
 python-dotenv
+fpdf

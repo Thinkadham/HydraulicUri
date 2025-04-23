@@ -213,7 +213,7 @@ def create_new_bill():
                 "cess_amount": cess,
                 "total_deduction": total_deduction,
                 "net_amount": net_amount,
-                "amount_in_words": f"Rupees {net_amount:}"  # Just shows the numeric value
+                
                 "cc_bill": cc_bill,
                 "final_bill": final_bill == "Yes",
                 "allotment_no": allotment_no,

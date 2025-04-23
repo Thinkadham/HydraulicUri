@@ -2,6 +2,21 @@ import streamlit as st
 import pandas as pd
 import datetime
 from num2words import num2words
+from supabase import create_client, Client
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Initialize Supabase client
+@st.cache_resource
+def init_supabase():
+    url = os.getenv("https://erxcqsswhljjccuytcoo.supabase.co")
+    key = os.getenv("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVyeGNxc3N3aGxqamNjdXl0Y29vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MTE4NDEsImV4cCI6MjA2MDk4Nzg0MX0.SXzmtAfecw1grfp6P8dFOPTeCRryK-ZXi3rDsFheDXE")
+    return create_client(url, key)
+
+supabase = init_supabase()
 
 # App Configuration
 st.set_page_config(
@@ -10,19 +25,24 @@ st.set_page_config(
     layout="wide"
 )
 
-# Load data (in a real app, this would connect to a database)
-@st.cache_data
-def load_data():
-    # Load data from Excel sheets
-    try:
-        works_df = pd.read_excel("AutoPaySystem.xlsx", sheet_name="Works")
-        contractor_df = pd.read_excel("AutoPaySystem.xlsx", sheet_name="Contractor")
-        return works_df, contractor_df
-    except:
-        # Return empty DataFrames if file not found
-        return pd.DataFrame(), pd.DataFrame()
+# Authentication
+def check_auth():
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+    return st.session_state.authenticated
 
-works_df, contractor_df = load_data()
+def login():
+    st.title("Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    
+    if st.button("Login"):
+        # In a real app, verify credentials against Supabase auth
+        if username == "admin" and password == "admin123":  # Example credentials
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("Invalid credentials")
 
 # Main App
 def main():
@@ -51,75 +71,82 @@ def main():
 def show_dashboard():
     st.header("Dashboard")
     
+    # Fetch data from Supabase
+    contractors = supabase.table("contractors").select("*").execute().data
+    works = supabase.table("works").select("*").execute().data
+    bills = supabase.table("bills").select("*").execute().data
+    
     # Stats columns
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Total Contractors", len(contractor_df))
+        st.metric("Total Contractors", len(contractors))
     with col2:
-        st.metric("Active Works", len(works_df))
+        st.metric("Active Works", len(works))
     with col3:
-        st.metric("Pending Bills", "15")  # Example value
+        pending_bills = len([b for b in bills if b.get("status") == "Pending"])
+        st.metric("Pending Bills", pending_bills)
         
-    # Recent bills table (example data)
+    # Recent bills table
     st.subheader("Recent Bills")
-    recent_bills = pd.DataFrame({
-        "Bill No": ["B-001", "B-002", "B-003"],
-        "Payee": ["Mumtaz Ahmad Khan", "Reyaz Ahmad Khan", "Abdul Aziz Malik"],
-        "Work": ["Lachipora B", "Maintenance & Repairs", "Limber Tethmulla Khul"],
-        "Amount": [1018483, 134573, 921577],
-        "Status": ["Paid", "Pending", "Approved"]
-    })
-    st.dataframe(recent_bills, use_container_width=True)
+    recent_bills = pd.DataFrame(bills)[:5]  # Show last 5 bills
+    st.dataframe(recent_bills[["bill_no", "payee", "work", "amount", "status"]], 
+                use_container_width=True)
     
-    # Budget utilization chart (placeholder)
+    # Budget utilization chart
     st.subheader("Budget Utilization")
-    budget_data = pd.DataFrame({
-        "Scheme": ["BADP", "DDC BDC Funds", "NABARD", "IRR UT CAPEX"],
-        "Allocated": [1373000, 24988000, 30306000, 33787000],
-        "Utilized": [921577, 15000000, 20000000, 12000000]
-    })
-    st.bar_chart(budget_data.set_index("Scheme"))
+    if works:
+        budget_data = pd.DataFrame(works)
+        if not budget_data.empty:
+            budget_data = budget_data.groupby("scheme").agg({
+                "allotment_amount": "sum",
+                "expenditure": "sum"
+            }).reset_index()
+            budget_data.columns = ["Scheme", "Allocated", "Utilized"]
+            st.bar_chart(budget_data.set_index("Scheme"))
 
 # Create New Bill Page
 def create_new_bill():
     st.header("Create New Bill")
+    
+    # Fetch data from Supabase
+    contractors = supabase.table("contractors").select("*").execute().data
+    works = supabase.table("works").select("*").execute().data
     
     with st.form("bill_form"):
         col1, col2 = st.columns(2)
         
         with col1:
             # Payee information
-            payee = st.selectbox("Select Payee", contractor_df["Name"].unique())
-            payee_data = contractor_df[contractor_df["Name"] == payee].iloc[0]
+            payee = st.selectbox("Select Payee", [c["name"] for c in contractors])
+            payee_data = next((c for c in contractors if c["name"] == payee), {})
             
-            st.text_input("S/O", payee_data.get("Parentage", ""))
-            st.text_input("R/O", payee_data.get("Resident", ""))
-            st.text_input("Registration", payee_data.get("Registration", ""))
-            st.text_input("Class", payee_data.get("Class", ""))
+            st.text_input("S/O", payee_data.get("parentage", ""))
+            st.text_input("R/O", payee_data.get("resident", ""))
+            st.text_input("Registration", payee_data.get("registration", ""))
+            st.text_input("Class", payee_data.get("class", ""))
             
         with col2:
-            st.text_input("PAN", payee_data.get("PAN", ""))
-            st.text_input("GSTIN", payee_data.get("GSTIN", ""))
-            st.text_input("Account No", payee_data.get("AcNo", ""))
+            st.text_input("PAN", payee_data.get("pan", ""))
+            st.text_input("GSTIN", payee_data.get("gstin", ""))
+            st.text_input("Account No", payee_data.get("account_no", ""))
             
         # Bill details
         bill_type = st.selectbox("Bill Type", ["Plan", "Non Plan"])
-        major_head = st.selectbox("Major Head", works_df["MH"].unique())
+        major_heads = list(set(w["mh"] for w in works))
+        major_head = st.selectbox("Major Head", major_heads)
         
         # Filter schemes based on selected major head
-        schemes = works_df[works_df["MH"] == major_head]["Scheme"].unique()
+        schemes = list(set(w["scheme"] for w in works if w["mh"] == major_head))
         scheme = st.selectbox("Scheme", schemes)
         
         # Filter works based on selected scheme
-        works = works_df[(works_df["MH"] == major_head) & (works_df["Scheme"] == scheme)]["WorkName"].unique()
-        work = st.selectbox("Name of Work/Particulars", works)
+        filtered_works = [w for w in works if w["mh"] == major_head and w["scheme"] == scheme]
+        work = st.selectbox("Name of Work/Particulars", [w["work_name"] for w in filtered_works])
         
         # Get work details
-        work_data = works_df[(works_df["MH"] == major_head) & 
-                            (works_df["Scheme"] == scheme) & 
-                            (works_df["WorkName"] == work)].iloc[0]
+        work_data = next((w for w in filtered_works if w["work_name"] == work), {})
         
-        st.text_area("Nomenclature", work_data.get("Nomenclature", ""))
+        st.text_area("Nomenclature", work_data.get("nomenclature", ""))
         
         # Bill amounts
         col3, col4 = st.columns(2)
@@ -165,36 +192,53 @@ def create_new_bill():
             # Calculate net amount
             net_amount = payable - total_deduction
             
-            # Generate bill summary
-            bill_summary = {
-                "Payee": payee,
-                "Work": work,
-                "Billed Amount": billed_amount,
-                "Deduct Payments": deduct_payments,
-                "Payable": payable,
-                "Income Tax": income_tax,
-                "Deposit": deposit,
-                "Cess": cess,
-                "Total Deduction": total_deduction,
-                "Net Amount": net_amount,
-                "Amount in Words": num2words(net_amount, lang='en_IN').title()
+            # Generate bill data
+            bill_data = {
+                "payee": payee,
+                "payee_id": payee_data.get("id"),
+                "work": work,
+                "work_id": work_data.get("id"),
+                "bill_type": bill_type,
+                "major_head": major_head,
+                "scheme": scheme,
+                "nomenclature": work_data.get("nomenclature", ""),
+                "billed_amount": billed_amount,
+                "deduct_payments": deduct_payments,
+                "payable": payable,
+                "funds_available": funds_available,
+                "income_tax_percent": income_tax_percent,
+                "income_tax_amount": income_tax,
+                "deposit_percent": deposit_percent,
+                "deposit_amount": deposit,
+                "cess_percent": cess_percent,
+                "cess_amount": cess,
+                "total_deduction": total_deduction,
+                "net_amount": net_amount,
+                "amount_in_words": num2words(net_amount, lang='en_IN').title(),
+                "cc_bill": cc_bill,
+                "final_bill": final_bill == "Yes",
+                "allotment_no": allotment_no,
+                "allotment_date": allotment_date.isoformat(),
+                "allotment_amount": allotment_amount,
+                "ts_no": ts_no,
+                "ts_date": ts_date.isoformat(),
+                "ts_amount": ts_amount,
+                "status": "Pending",
+                "created_at": datetime.datetime.now().isoformat()
             }
             
-            # Display bill summary
-            st.success("Bill generated successfully!")
-            st.subheader("Bill Summary")
-            st.json(bill_summary)
-            
-            # Option to save or print
-            col7, col8 = st.columns(2)
-            with col7:
-                if st.button("Save Bill"):
-                    # In a real app, this would save to database
+            # Insert into Supabase
+            try:
+                result = supabase.table("bills").insert(bill_data).execute()
+                if result.data:
                     st.success("Bill saved successfully!")
-            with col8:
-                if st.button("Print Bill"):
-                    # In a real app, this would generate a PDF
-                    st.success("Bill printed successfully!")
+                    
+                    # Update work expenditure in Supabase
+                    current_expenditure = work_data.get("expenditure", 0)
+                    new_expenditure = current_expenditure + billed_amount
+                    supabase.table("works").update({"expenditure": new_expenditure}).eq("id", work_data["id"]).execute()
+            except Exception as e:
+                st.error(f"Error saving bill: {str(e)}")
 
 # Contractor Management Page
 def contractor_management():
@@ -203,14 +247,15 @@ def contractor_management():
     tab1, tab2 = st.tabs(["View Contractors", "Add New Contractor"])
     
     with tab1:
-        st.dataframe(contractor_df, use_container_width=True)
+        contractors = supabase.table("contractors").select("*").execute().data
+        st.dataframe(pd.DataFrame(contractors), use_container_width=True)
         
     with tab2:
         with st.form("contractor_form"):
             col1, col2 = st.columns(2)
             
             with col1:
-                name = st.text_input("Name")
+                name = st.text_input("Name", key="contractor_name")
                 parentage = st.text_input("Parentage")
                 resident = st.text_input("Resident")
                 registration = st.text_input("Registration")
@@ -222,18 +267,25 @@ def contractor_management():
                 account_no = st.text_input("Account No")
                 
             if st.form_submit_button("Add Contractor"):
-                # In a real app, this would save to database
-                new_contractor = {
-                    "Name": name,
-                    "Parentage": parentage,
-                    "Resident": resident,
-                    "Registration": registration,
-                    "Class": contractor_class,
-                    "PAN": pan,
-                    "GSTIN": gstin,
-                    "AcNo": account_no
+                contractor_data = {
+                    "name": name,
+                    "parentage": parentage,
+                    "resident": resident,
+                    "registration": registration,
+                    "class": contractor_class,
+                    "pan": pan,
+                    "gstin": gstin,
+                    "account_no": account_no,
+                    "created_at": datetime.datetime.now().isoformat()
                 }
-                st.success("Contractor added successfully!")
+                
+                try:
+                    result = supabase.table("contractors").insert(contractor_data).execute()
+                    if result.data:
+                        st.success("Contractor added successfully!")
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Error adding contractor: {str(e)}")
 
 # Works Management Page
 def works_management():
@@ -242,7 +294,8 @@ def works_management():
     tab1, tab2 = st.tabs(["View Works", "Add New Work"])
     
     with tab1:
-        st.dataframe(works_df, use_container_width=True)
+        works = supabase.table("works").select("*").execute().data
+        st.dataframe(pd.DataFrame(works), use_container_width=True)
         
     with tab2:
         with st.form("work_form"):
@@ -261,21 +314,31 @@ def works_management():
                 aaa_amount = st.number_input("AAA Amount", min_value=0)
                 
             nomenclature = st.text_area("Nomenclature")
+            expenditure = st.number_input("Initial Expenditure", min_value=0, value=0)
             
             if st.form_submit_button("Add Work"):
-                # In a real app, this would save to database
-                new_work = {
-                    "MH": mh,
-                    "Scheme": scheme,
-                    "WorkName": work_name,
-                    "WorkCode": work_code,
-                    "Classification": classification,
-                    "AAA No": aaa_no,
-                    "AAA Dt": aaa_date,
-                    "AAA Amt": aaa_amount,
-                    "Nomenclature": nomenclature
+                work_data = {
+                    "mh": mh,
+                    "scheme": scheme,
+                    "work_name": work_name,
+                    "work_code": work_code,
+                    "classification": classification,
+                    "aaa_no": aaa_no,
+                    "aaa_date": aaa_date.isoformat(),
+                    "aaa_amount": aaa_amount,
+                    "nomenclature": nomenclature,
+                    "allotment_amount": aaa_amount,
+                    "expenditure": expenditure,
+                    "created_at": datetime.datetime.now().isoformat()
                 }
-                st.success("Work added successfully!")
+                
+                try:
+                    result = supabase.table("works").insert(work_data).execute()
+                    if result.data:
+                        st.success("Work added successfully!")
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Error adding work: {str(e)}")
 
 # Reports Page
 def show_reports():
@@ -290,61 +353,60 @@ def show_reports():
                                datetime.date.today()])
     
     if st.button("Generate Report"):
-        # In a real app, this would query the database
-        st.success(f"Generating {report_type} report for {date_range[0]} to {date_range[1]}")
+        # Fetch data from Supabase with date filtering
+        start_date, end_date = date_range
+        bills = supabase.table("bills").select("*").gte("created_at", start_date.isoformat()).lte("created_at", end_date.isoformat()).execute().data
+        works = supabase.table("works").select("*").execute().data
+        contractors = supabase.table("contractors").select("*").execute().data
         
-        # Placeholder data for demonstration
         if report_type == "Payment Register":
-            data = pd.DataFrame({
-                "Bill No": ["B-001", "B-002", "B-003"],
-                "Date": [datetime.date.today() - datetime.timedelta(days=2), 
-                         datetime.date.today() - datetime.timedelta(days=1), 
-                         datetime.date.today()],
-                "Payee": ["Mumtaz Ahmad Khan", "Reyaz Ahmad Khan", "Abdul Aziz Malik"],
-                "Work": ["Lachipora B", "Maintenance & Repairs", "Limber Tethmulla Khul"],
-                "Amount": [1018483, 134573, 921577],
-                "Status": ["Paid", "Pending", "Approved"]
-            })
+            data = pd.DataFrame(bills)
+            if not data.empty:
+                data = data[["bill_no", "created_at", "payee", "work", "payable", "status"]]
         elif report_type == "Contractor Wise Payments":
-            data = pd.DataFrame({
-                "Contractor": ["Mumtaz Ahmad Khan", "Reyaz Ahmad Khan", "Abdul Aziz Malik"],
-                "Total Bills": [5, 3, 7],
-                "Total Amount": [2500000, 1500000, 3500000],
-                "Last Payment Date": [datetime.date.today() - datetime.timedelta(days=10), 
-                                     datetime.date.today() - datetime.timedelta(days=15), 
-                                     datetime.date.today() - datetime.timedelta(days=5)]
-            })
+            if bills:
+                df = pd.DataFrame(bills)
+                data = df.groupby("payee").agg({
+                    "payable": ["count", "sum"],
+                    "created_at": "max"
+                }).reset_index()
+                data.columns = ["Contractor", "Total Bills", "Total Amount", "Last Payment Date"]
+            else:
+                data = pd.DataFrame()
         elif report_type == "Scheme Wise Expenditure":
-            data = pd.DataFrame({
-                "Scheme": ["BADP", "DDC BDC Funds", "NABARD", "IRR UT CAPEX"],
-                "Allocated": [1373000, 24988000, 30306000, 33787000],
-                "Utilized": [921577, 15000000, 20000000, 12000000],
-                "Balance": [451423, 9988000, 10306000, 21787000],
-                "Utilization %": [67, 60, 66, 36]
-            })
+            if works:
+                data = pd.DataFrame(works)
+                data = data.groupby("scheme").agg({
+                    "allotment_amount": "sum",
+                    "expenditure": "sum"
+                }).reset_index()
+                data["balance"] = data["allotment_amount"] - data["expenditure"]
+                data["utilization_percent"] = (data["expenditure"] / data["allotment_amount"]) * 100
+                data.columns = ["Scheme", "Allocated", "Utilized", "Balance", "Utilization %"]
+            else:
+                data = pd.DataFrame()
         else:  # Deduction Register
-            data = pd.DataFrame({
-                "Bill No": ["B-001", "B-002", "B-003"],
-                "Date": [datetime.date.today() - datetime.timedelta(days=2), 
-                         datetime.date.today() - datetime.timedelta(days=1), 
-                         datetime.date.today()],
-                "Payee": ["Mumtaz Ahmad Khan", "Reyaz Ahmad Khan", "Abdul Aziz Malik"],
-                "Income Tax": [22814, 3014, 20643],
-                "Deposit": [101848, 13457, 92158],
-                "Cess": [10185, 1346, 9216],
-                "Total Deduction": [134847, 17817, 122017]
-            })
+            if bills:
+                data = pd.DataFrame(bills)
+                data = data[["bill_no", "created_at", "payee", "income_tax_amount", "deposit_amount", "cess_amount"]]
+                data["total_deduction"] = data["income_tax_amount"] + data["deposit_amount"] + data["cess_amount"]
+                data.columns = ["Bill No", "Date", "Payee", "Income Tax", "Deposit", "Cess", "Total Deduction"]
+            else:
+                data = pd.DataFrame()
         
-        st.dataframe(data, use_container_width=True)
-        
-        # Export options
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.download_button("Download CSV", data.to_csv(index=False), "report.csv", "text/csv")
-        with col2:
-            st.download_button("Download Excel", data.to_excel("report.xlsx", index=False), "report.xlsx")
-        with col3:
-            st.button("Print Report")
+        if not data.empty:
+            st.dataframe(data, use_container_width=True)
+            
+            # Export options
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.download_button("Download CSV", data.to_csv(index=False), "report.csv", "text/csv")
+            with col2:
+                st.download_button("Download Excel", data.to_excel("report.xlsx", index=False), "report.xlsx")
+            with col3:
+                st.button("Print Report")
+        else:
+            st.warning("No data found for the selected criteria")
 
 # Settings Page
 def show_settings():
@@ -357,7 +419,21 @@ def show_settings():
         st.write("System configuration options would go here")
         
     with st.expander("Backup & Restore"):
-        st.write("Backup and restore functionality would go here")
+        if st.button("Create Backup"):
+            try:
+                # Export all tables to CSV
+                tables = ["contractors", "works", "bills"]
+                for table in tables:
+                    data = supabase.table(table).select("*").execute().data
+                    pd.DataFrame(data).to_csv(f"{table}_backup.csv", index=False)
+                
+                st.success("Backup created successfully! Check your local files.")
+            except Exception as e:
+                st.error(f"Error creating backup: {str(e)}")
 
+# Run the app
 if __name__ == "__main__":
-    main()
+    if check_auth():
+        main()
+    else:
+        login()

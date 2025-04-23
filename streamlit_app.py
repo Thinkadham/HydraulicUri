@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import datetime
-from num2words import num2words
 from supabase import create_client, Client
 import os
 from dotenv import load_dotenv

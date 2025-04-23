@@ -5,6 +5,7 @@ from num2words import num2words
 from supabase import create_client, Client
 import os
 from dotenv import load_dotenv
+from fpdf import FPDF
 
 # Load environment variables
 load_dotenv()
@@ -24,6 +25,138 @@ st.set_page_config(
     page_icon="💰",
     layout="wide"
 )
+
+# PDF Generation Function
+def generate_payorder_pdf(bill_data):
+    """Generate PDF in JJM template format"""
+    
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Set font and styles
+    pdf.set_font("Arial", size=10)
+    
+    # Header with timestamp
+    pdf.cell(0, 5, f"Time Stamp {datetime.datetime.now().strftime('%d-%m-%Y %I:%M:%S %p')}", ln=1, align='R')
+    pdf.ln(5)
+    
+    # Payment Order title
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 10, "PAYMENT ORDER", ln=1, align='C')
+    pdf.set_font("Arial", size=10)
+    pdf.cell(0, 5, "*"*80, ln=1, align='C')
+    pdf.ln(5)
+    
+    # Payee information
+    pdf.cell(0, 5, f"Payment in favour of M/s {bill_data['payee_name']} S/O {bill_data['parentage']}", ln=1)
+    pdf.cell(0, 5, f"R/O {bill_data['resident']} bearing Registration No: {bill_data['registration']},", ln=1)
+    pdf.cell(0, 5, f"PAN: {bill_data['pan']}, GSTIN: {bill_data['gstin']} and Account No: {bill_data['account_no']}", ln=1)
+    pdf.ln(5)
+    
+    # Work details
+    pdf.cell(0, 5, f"on account of {bill_data['cc_bill']} for {bill_data['work_description']}", ln=1)
+    pdf.cell(0, 5, f"AAA No: {bill_data['aaa_no']} Dated: {bill_data['aaa_date']} for ₹ {bill_data['aaa_amount']:,}", ln=1)
+    pdf.cell(0, 5, f"TS No: {bill_data['ts_no']} Dated: {bill_data['ts_date']} for ₹ {bill_data['ts_amount']:,}", ln=1)
+    pdf.cell(0, 5, f"Allotment No: {bill_data['allotment_no']} Dated: {bill_data['allotment_date']} for ₹ {bill_data['allotment_amount']:,}", ln=1)
+    pdf.ln(5)
+    
+    # Financial details
+    pdf.cell(0, 5, f"Billed Amount = ₹ {bill_data['billed_amount']:,}", ln=1)
+    pdf.cell(0, 5, f"Deduct Last Payments = ₹ {bill_data['deduct_payments']:,}", ln=1)
+    pdf.cell(0, 5, f"Payable Amount = ₹ {bill_data['payable']:,}", ln=1)
+    pdf.cell(0, 5, f"Restricted to = ₹ {bill_data['restricted_to']:,}", ln=1)
+    pdf.ln(5)
+    
+    # Payment details
+    pdf.cell(0, 5, f"Passed for an amount of ₹ {bill_data['net_amount']:,} (Rupees {bill_data['amount_in_words']} Only)", ln=1)
+    pdf.cell(0, 5, f"but debit ₹ {bill_data['payable']:,} to Major Head {bill_data['major_head']}-JJM, Scheme {bill_data['scheme_name']}", ln=1)
+    pdf.cell(0, 5, f"having IMIS Code {bill_data['imis_code']} crediting ₹ {bill_data['income_tax_amount']:,} to Income Tax,", ln=1)
+    pdf.cell(0, 5, f"₹ {bill_data['deposit_amount']:,} to Deposit, ₹ 0 to GST and ₹ {bill_data['cess_amount']:,} to Labour Cess.", ln=1)
+    pdf.ln(5)
+    
+    # Deductions section
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, "DEDUCTIONS", ln=1)
+    pdf.set_font("Arial", size=10)
+    pdf.cell(0, 5, f"Cess @ {bill_data['cess_percent']}% = ₹ {bill_data['cess_amount']:,}", ln=1)
+    pdf.cell(0, 5, f"I/Tax @ {bill_data['income_tax_percent']}% = ₹ {bill_data['income_tax_amount']:,}", ln=1)
+    pdf.cell(0, 5, f"Deposit @ {bill_data['deposit_percent']}% = ₹ {bill_data['deposit_amount']:,}", ln=1)
+    pdf.cell(0, 5, f"TOTAL Deduction = ₹ {bill_data['total_deduction']:,}", ln=1)
+    pdf.ln(5)
+    
+    # Signature blocks
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(90, 10, "Executive Engineer", align='C')
+    pdf.cell(90, 10, "Superintending Engineer", align='C')
+    pdf.ln(15)
+    
+    pdf.set_font("Arial", size=10)
+    pdf.cell(0, 5, f"JSD (PHE) Hydraulic Division {bill_data['division']}", ln=1, align='C')
+    pdf.cell(0, 5, f"Jal Shakti Hyd. Circle {bill_data['circle']}", ln=1, align='C')
+    pdf.ln(10)
+    
+    # Budget information
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, "BUDGET CONTROL", ln=1)
+    pdf.set_font("Arial", size=10)
+    pdf.cell(0, 5, f"BUDGET = ₹ {bill_data['budget']:,}", ln=1)
+    pdf.cell(0, 5, f"EXPENDITURE = ₹ {bill_data['expenditure']:,}", ln=1)
+    pdf.cell(0, 5, f"BALANCE = ₹ {bill_data['balance']:,}", ln=1)
+    pdf.ln(10)
+    
+    # Certification section
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, "CERTIFICATE", ln=1)
+    pdf.set_font("Arial", size=10)
+    pdf.multi_cell(0, 5, f"This is to certify that an amount of ₹ {bill_data['gross_amount']:,} (Rupees {bill_data['amount_in_words']} Only) is to be debited from SNA amount of {bill_data['scheme_name']} under JJM code in IMIS {bill_data['imis_code']} for which PPA has been generated after observing all codal formalities/guidelines of the programme. The payment should be made as per the following breakup:")
+    pdf.ln(5)
+    
+    # Payment breakdown table
+    col_widths = [60, 40, 40, 50]
+    pdf.cell(col_widths[0], 10, "Gross Amount", border=1)
+    pdf.cell(col_widths[1], 10, "Central Share", border=1)
+    pdf.cell(col_widths[2], 10, "UT Share", border=1)
+    pdf.cell(col_widths[3], 10, "Total", border=1, ln=1)
+    
+    pdf.cell(col_widths[0], 10, "", border=1)
+    pdf.cell(col_widths[1], 10, f"₹ {bill_data['central_share']:,}", border=1)
+    pdf.cell(col_widths[2], 10, f"₹ {bill_data['ut_share']:,}", border=1)
+    pdf.cell(col_widths[3], 10, f"₹ {bill_data['gross_amount']:,}", border=1, ln=1)
+    
+    pdf.cell(sum(col_widths[:3]), 10, "Income Tax", border=1)
+    pdf.cell(col_widths[3], 10, f"₹ {bill_data['income_tax_amount']:,}", border=1, ln=1)
+    
+    pdf.cell(sum(col_widths[:3]), 10, "Labour Cess", border=1)
+    pdf.cell(col_widths[3], 10, f"₹ {bill_data['cess_amount']:,}", border=1, ln=1)
+    
+    pdf.cell(sum(col_widths[:3]), 10, "GST", border=1)
+    pdf.cell(col_widths[3], 10, "₹ 0", border=1, ln=1)
+    
+    pdf.cell(sum(col_widths[:3]), 10, "Deposit", border=1)
+    pdf.cell(col_widths[3], 10, f"₹ {bill_data['deposit_amount']:,}", border=1, ln=1)
+    
+    pdf.cell(sum(col_widths[:3]), 10, "Additional Deposit", border=1)
+    pdf.cell(col_widths[3], 10, "", border=1, ln=1)
+    
+    pdf.cell(sum(col_widths[:3]), 10, "Net payable to Agency", border=1)
+    pdf.cell(col_widths[3], 10, f"₹ {bill_data['net_amount']:,}", border=1, ln=1)
+    
+    pdf.ln(15)
+    
+    # Final signatures
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(90, 10, "Executive Engineer", align='C')
+    pdf.cell(90, 10, "Superintending Engineer", align='C')
+    pdf.ln(15)
+    
+    pdf.set_font("Arial", size=10)
+    pdf.cell(0, 5, f"JSD (PHE) Hydraulic Division {bill_data['division']}", ln=1, align='C')
+    pdf.cell(0, 5, f"Jal Shakti Hyd. Circle {bill_data['circle']}", ln=1, align='C')
+    
+    # Save the PDF
+    filename = f"PayOrder_{bill_data['bill_no']}.pdf"
+    pdf.output(filename)
+    return filename
 
 # Authentication
 def check_auth():
@@ -120,15 +253,15 @@ def create_new_bill():
             payee = st.selectbox("Select Payee", [c["name"] for c in contractors])
             payee_data = next((c for c in contractors if c["name"] == payee), {})
             
-            st.text_input("S/O", payee_data.get("parentage", ""))
-            st.text_input("R/O", payee_data.get("resident", ""))
-            st.text_input("Registration", payee_data.get("registration", ""))
-            st.text_input("Class", payee_data.get("class", ""))
+            parentage = st.text_input("S/O", payee_data.get("parentage", ""))
+            resident = st.text_input("R/O", payee_data.get("resident", ""))
+            registration = st.text_input("Registration", payee_data.get("registration", ""))
+            contractor_class = st.text_input("Class", payee_data.get("class", ""))
             
         with col2:
-            st.text_input("PAN", payee_data.get("pan", ""))
-            st.text_input("GSTIN", payee_data.get("gstin", ""))
-            st.text_input("Account No", payee_data.get("account_no", ""))
+            pan = st.text_input("PAN", payee_data.get("pan", ""))
+            gstin = st.text_input("GSTIN", payee_data.get("gstin", ""))
+            account_no = st.text_input("Account No", payee_data.get("account_no", ""))
             
         # Bill details
         bill_type = st.selectbox("Bill Type", ["Plan", "Non Plan"])
@@ -146,7 +279,8 @@ def create_new_bill():
         # Get work details
         work_data = next((w for w in filtered_works if w["work_name"] == work), {})
         
-        st.text_area("Nomenclature", work_data.get("nomenclature", ""))
+        nomenclature = st.text_area("Nomenclature", work_data.get("nomenclature", ""))
+        imis_code = st.text_input("IMIS Code", work_data.get("imis_code", ""))
         
         # Bill amounts
         col3, col4 = st.columns(2)
@@ -181,6 +315,18 @@ def create_new_bill():
             ts_date = st.date_input("TS Date")
             ts_amount = st.number_input("TS Amount", min_value=0)
             
+        # Budget details
+        st.subheader("Budget Details")
+        col7, col8 = st.columns(2)
+        with col7:
+            budget = st.number_input("Total Budget", min_value=0, value=work_data.get("allotment_amount", 0))
+            central_share = st.number_input("Central Share", min_value=0)
+            
+        with col8:
+            ut_share = st.number_input("UT Share", min_value=0)
+            division = st.text_input("Division", "Uri")
+            circle = st.text_input("Circle", "Bla/Bpr HQ Sopore")
+            
         # Submit button
         if st.form_submit_button("Generate Bill"):
             # Calculate deductions
@@ -201,7 +347,7 @@ def create_new_bill():
                 "bill_type": bill_type,
                 "major_head": major_head,
                 "scheme": scheme,
-                "nomenclature": work_data.get("nomenclature", ""),
+                "nomenclature": nomenclature,
                 "billed_amount": billed_amount,
                 "deduct_payments": deduct_payments,
                 "payable": payable,
@@ -237,6 +383,63 @@ def create_new_bill():
                     current_expenditure = work_data.get("expenditure", 0)
                     new_expenditure = current_expenditure + billed_amount
                     supabase.table("works").update({"expenditure": new_expenditure}).eq("id", work_data["id"]).execute()
+                    
+                    # Prepare data for PDF generation
+                    pdf_data = {
+                        "bill_no": result.data[0].get("id"),
+                        "payee_name": payee,
+                        "parentage": parentage,
+                        "resident": resident,
+                        "registration": registration,
+                        "pan": pan,
+                        "gstin": gstin,
+                        "account_no": account_no,
+                        "cc_bill": cc_bill,
+                        "work_description": work,
+                        "aaa_no": allotment_no,
+                        "aaa_date": allotment_date.strftime("%d-%m-%Y"),
+                        "aaa_amount": allotment_amount,
+                        "ts_no": ts_no,
+                        "ts_date": ts_date.strftime("%d-%m-%Y"),
+                        "ts_amount": ts_amount,
+                        "allotment_no": allotment_no,
+                        "allotment_date": allotment_date.strftime("%d-%m-%Y"),
+                        "allotment_amount": allotment_amount,
+                        "billed_amount": billed_amount,
+                        "deduct_payments": deduct_payments,
+                        "payable": payable,
+                        "restricted_to": payable,
+                        "cess_percent": cess_percent,
+                        "cess_amount": cess,
+                        "income_tax_percent": income_tax_percent,
+                        "income_tax_amount": income_tax,
+                        "deposit_percent": deposit_percent,
+                        "deposit_amount": deposit,
+                        "total_deduction": total_deduction,
+                        "net_amount": net_amount,
+                        "gross_amount": payable,
+                        "amount_in_words": num2words(net_amount, lang='en_IN').title(),
+                        "scheme_name": scheme,
+                        "major_head": major_head,
+                        "imis_code": imis_code,
+                        "budget": budget,
+                        "expenditure": new_expenditure,
+                        "balance": budget - new_expenditure,
+                        "central_share": central_share,
+                        "ut_share": ut_share,
+                        "division": division,
+                        "circle": circle
+                    }
+                    
+                    # Generate and offer PDF download
+                    pdf_filename = generate_payorder_pdf(pdf_data)
+                    with open(pdf_filename, "rb") as f:
+                        st.download_button(
+                            label="Download PayOrder PDF",
+                            data=f,
+                            file_name=pdf_filename,
+                            mime="application/pdf"
+                        )
             except Exception as e:
                 st.error(f"Error saving bill: {str(e)}")
 
@@ -314,6 +517,7 @@ def works_management():
                 aaa_amount = st.number_input("AAA Amount", min_value=0)
                 
             nomenclature = st.text_area("Nomenclature")
+            imis_code = st.text_input("IMIS Code")
             expenditure = st.number_input("Initial Expenditure", min_value=0, value=0)
             
             if st.form_submit_button("Add Work"):
@@ -327,6 +531,7 @@ def works_management():
                     "aaa_date": aaa_date.isoformat(),
                     "aaa_amount": aaa_amount,
                     "nomenclature": nomenclature,
+                    "imis_code": imis_code,
                     "allotment_amount": aaa_amount,
                     "expenditure": expenditure,
                     "created_at": datetime.datetime.now().isoformat()

@@ -59,7 +59,7 @@ def generate_payorder_pdf(bill_data):
     
     # Work details
     pdf.cell(0, 5, f"on account of {bill_data['cc_bill']} for {bill_data['work_description']}", ln=1)
-    pdf.cell(0, 5, f"AAA No: {bill_data['aaa_no']} Dated: {bill_data['aaa_date']} for ₹ {bill_data['aaa_amount']:,}", ln=1)
+    pdf.cell(0, 5, f"AAA No: {bill_data['aaa_no']} Dated: {bill_data['aaa_date']} for RS {bill_data['aaa_amount']:,}", ln=1)
     pdf.cell(0, 5, f"TS No: {bill_data['ts_no']} Dated: {bill_data['ts_date']} for RS {bill_data['ts_amount']:,}", ln=1)
     pdf.cell(0, 5, f"Allotment No: {bill_data['allotment_no']} Dated: {bill_data['allotment_date']} for RS {bill_data['allotment_amount']:,}", ln=1)
     pdf.ln(5)

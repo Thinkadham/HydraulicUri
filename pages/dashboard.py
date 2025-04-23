@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from hydraulicuri.services import get_contractors, get_works, get_recent_bills
+from services import get_contractors, get_works, get_recent_bills
 
 def show():
     st.header("Dashboard")
@@ -22,8 +22,7 @@ def show():
         st.subheader("Recent Bills")
         if bills:
             recent_bills = pd.DataFrame(bills)[:5]
-            st.dataframe(recent_bills[["bill_no", "payee", "work", "amount", "status"]], 
-                        use_container_width=True)
+            st.dataframe(recent_bills[["bill_no", "payee", "work", "amount", "status"]])
         
         st.subheader("Budget Utilization")
         if works:

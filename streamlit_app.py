@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import datetime
+from num2words import num2words
 from supabase import create_client, Client
 import os
 from dotenv import load_dotenv
@@ -213,7 +214,7 @@ def create_new_bill():
                 "cess_amount": cess,
                 "total_deduction": total_deduction,
                 "net_amount": net_amount,
-                
+                "amount_in_words": num2words(net_amount, lang='en_IN').title(),
                 "cc_bill": cc_bill,
                 "final_bill": final_bill == "Yes",
                 "allotment_no": allotment_no,

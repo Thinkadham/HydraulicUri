@@ -1,6 +1,13 @@
 import streamlit as st
 from auth import check_auth, login
-from pages import dashboard, create_bill, contractors, works, reports, settings
+from pages import (
+    show_dashboard,
+    show_create_bill,
+    show_contractors,
+    show_works,
+    show_reports,
+    show_settings
+)
 
 def main():
     st.title("Auto Payment System")
@@ -10,22 +17,27 @@ def main():
         login()
         return
     
-    menu = st.sidebar.selectbox("Navigation", 
-        ["Dashboard", "Create New Bill", "Contractor Management", 
-         "Works Management", "Reports", "Settings"])
+    menu = st.sidebar.selectbox("Navigation", [
+        "Dashboard", 
+        "Create New Bill", 
+        "Contractor Management", 
+        "Works Management", 
+        "Reports", 
+        "Settings"
+    ])
     
     if menu == "Dashboard":
-        dashboard.show()
+        show_dashboard()
     elif menu == "Create New Bill":
-        create_bill.show()
+        show_create_bill()
     elif menu == "Contractor Management":
-        contractors.show()
+        show_contractors()
     elif menu == "Works Management":
-        works.show()
+        show_works()
     elif menu == "Reports":
-        reports.show()
+        show_reports()
     elif menu == "Settings":
-        settings.show()
+        show_settings()
 
 if __name__ == "__main__":
     main()

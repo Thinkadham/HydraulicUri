@@ -215,7 +215,7 @@ def create_new_bill():
                 "net_amount": net_amount,
                 "amount_in_words": f"Rupees {net_amount:,}"  # Just shows the numeric value
                
-                "final_bill": final_bill == "Yes",
+                
                 "allotment_no": allotment_no,
                 "allotment_date": allotment_date.isoformat(),
                 "allotment_amount": allotment_amount,

@@ -4,12 +4,3 @@ from .contractors import show as show_contractors
 from .works import show as show_works
 from .reports import show as show_reports
 from .settings import show as show_settings
-
-__all__ = [
-    'show_dashboard',
-    'show_create_bill',
-    'show_contractors',
-    'show_works',
-    'show_reports',
-    'show_settings'
-]

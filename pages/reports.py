@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import datetime
 from utils.db import get_bills, get_works
+from utils.auth import check_auth
 
 # Only show content if authenticated
 if not check_auth():

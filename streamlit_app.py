@@ -11,96 +11,59 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-def load_logo():
-    """Safe logo loading with multiple fallback paths"""
-    logo_paths = [
-        "assets/logo.png",
-        "images/logo.png",
-        "logo.png"
-    ]
-    for path in logo_paths:
-        if os.path.exists(path):
-            try:
-                return Image.open(path)
-            except:
-                continue
-    return None
-
-def show_pre_login_sidebar():
-    """Simplified sidebar before login"""
+def show_empty_sidebar():
+    """Empty sidebar before login"""
     with st.sidebar:
-        logo = load_logo()
-        if logo:
-            st.image(logo, width=200)
-        else:
-            st.title("Auto Payment System")
+        st.title("Auto Payment System")
         st.markdown("---")
         st.write("Please login to access the system")
 
-def show_post_login_sidebar():
+def show_main_sidebar():
     """Full sidebar after login"""
     with st.sidebar:
-        logo = load_logo()
-        if logo:
-            st.image(logo, width=200)
-        else:
-            st.title("Auto Payment System")
-        
+        st.title("Auto Payment System")
         st.markdown("---")
         
-        # Navigation menu with icons
-        menu_options = {
-            "Dashboard": "🏠",
-            "Create New Bill": "🧾",
-            "Contractor Management": "👷",
-            "Works Management": "🏗️",
-            "Reports": "📊",
-            "Settings": "⚙️"
-        }
-        
+        # Navigation menu
         selected = st.radio(
             "Navigation",
-            list(menu_options.keys()),
-            format_func=lambda x: f"{menu_options[x]} {x}",
+            options=["Dashboard", "Create Bill", "Contractors", "Works", "Reports", "Settings"],
             label_visibility="collapsed"
         )
         
         st.markdown("---")
-        if st.button("🚪 Logout"):
+        if st.button("Logout"):
             from utils.auth import logout
             logout()
         
         return selected
 
 def main():
-    if check_auth():
-        selected_page = show_post_login_sidebar()
-        
-        if selected_page:
-            st.title(f"{selected_page}")
-            
-            # Page routing
-            if selected_page == "Dashboard":
-                from pages.dashboard import show_dashboard
-                show_dashboard()
-            elif selected_page == "Create New Bill":
-                from pages.create_bill import create_new_bill
-                create_new_bill()
-            elif selected_page == "Contractor Management":
-                from pages.contractors import contractor_management
-                contractor_management()
-            elif selected_page == "Works Management":
-                from pages.works import works_management
-                works_management()
-            elif selected_page == "Reports":
-                from pages.reports import show_reports
-                show_reports()
-            elif selected_page == "Settings":
-                from pages.settings import show_settings
-                show_settings()
-    else:
-        show_pre_login_sidebar()
+    if not check_auth():
+        show_empty_sidebar()
         login()
+    else:
+        selected_page = show_main_sidebar()
+        
+        # Page routing
+        if selected_page == "Dashboard":
+            from pages.dashboard import show_dashboard
+            show_dashboard()
+        elif selected_page == "Create Bill":
+            from pages.create_bill import create_new_bill
+            create_new_bill()
+        elif selected_page == "Contractors":
+            from pages.contractors import contractor_management
+            contractor_management()
+        elif selected_page == "Works":
+            from pages.works import works_management
+            works_management()
+        elif selected_page == "Reports":
+            from pages.reports import show_reports
+            show_reports()
+        elif selected_page == "Settings":
+            from pages.settings import show_settings
+            show_settings()
 
 if __name__ == "__main__":
     main()

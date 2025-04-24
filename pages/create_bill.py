@@ -2,12 +2,7 @@ import streamlit as st
 import datetime
 from utils.db import get_contractors, get_works, insert_bill, update_work_expenditure
 from utils.helpers import amount_in_words, calculate_deductions
-from utils.auth import check_auth
 
-# Only show content if authenticated
-if not check_auth():
-    st.warning("Please log in to access this page")
-    st.stop()
 
 def create_new_bill():
     st.header("Create New Bill")

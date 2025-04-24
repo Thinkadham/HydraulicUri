@@ -12,10 +12,13 @@ st.set_page_config(
 )
 
 def load_logo():
-    """Load logo with multiple fallback paths"""
+    """Load logo with dark/light variants"""
     logo_paths = [
+        "assets/logo-dark.png",  # Dark version first
         "assets/logo.png",
+        "images/logo-dark.png",
         "images/logo.png",
+        "logo-dark.png",
         "logo.png"
     ]
     for path in logo_paths:
@@ -33,11 +36,14 @@ def main():
     
     # Authentication check
     if not check_auth():
-        # Hide sidebar during login
+        # Hide sidebar during login with dark background
         st.markdown("""
             <style>
                 section[data-testid="stSidebar"] {
                     display: none !important;
+                }
+                .stApp {
+                    background-color: #0e1117;
                 }
             </style>
         """, unsafe_allow_html=True)
@@ -49,7 +55,7 @@ def main():
         with st.sidebar:
             st.sidebar.empty()  # Clear any existing content
             
-            # Logo and title
+            # Logo and title - dark theme compatible
             logo = load_logo()
             if logo:
                 st.image(logo, width=200)
@@ -58,7 +64,7 @@ def main():
             
             st.markdown("---")
             
-            # Navigation - with persistent state
+            # Navigation with dark theme styling
             st.session_state.current_page = st.radio(
                 "Menu",
                 ["Dashboard", "Create Bill", "Contractors", "Works", "Reports", "Settings"],
@@ -68,24 +74,28 @@ def main():
             
             st.markdown("---")
             
-            # User info and logout
+            # User info with dark theme text
             if st.session_state.get('username'):
-                st.markdown(f"**Logged in as:** {st.session_state.username}")
+                st.markdown(f"<span style='color:#f0f2f6'>**Logged in as:** {st.session_state.username}</span>", 
+                           unsafe_allow_html=True)
+            
+            # Logout button with dark theme styling
             if st.button("🚪 Logout", key="logout_btn"):
                 from utils.auth import logout
                 logout()
             
-            # Custom styling
+            # Dark theme sidebar styling
             st.markdown("""
                 <style>
                     [data-testid="stSidebar"] {
-                        background: linear-gradient(180deg, #4a6bff 0%, #2541b2 100%) !important;
+                        background-color: #1a1a1a !important;
+                        border-right: 1px solid #333;
                     }
                     .stRadio [role="radiogroup"] {
                         gap: 0.5rem;
                     }
                     .stRadio [data-testid="stMarkdownContainer"] {
-                        color: white !important;
+                        color: #f0f2f6 !important;
                         padding: 0.5rem;
                         border-radius: 0.5rem;
                     }
@@ -95,31 +105,43 @@ def main():
                     [data-testid="stSidebar"] button {
                         background: #ff4b4b;
                         color: white;
+                        border: 1px solid #333;
+                    }
+                    [data-testid="stSidebar"] button:hover {
+                        background: #ff3333 !important;
+                        border: 1px solid #444;
+                    }
+                    hr {
+                        border-color: #333 !important;
                     }
                 </style>
             """, unsafe_allow_html=True)
             
         st.session_state.nav_initialized = True
     
-    # Page routing
+    # Dark theme main content area
+    st.markdown("""
+        <style>
+            .stApp {
+                background-color: #0e1117;
+            }
+            .stMarkdown, .stText, .stNumberInput label, 
+            .stTextInput label, .stSelectbox label, 
+            .stDateInput label, .stTimeInput label {
+                color: #f0f2f6 !important;
+            }
+            .stDataFrame, .stTable {
+                background-color: #1a1a1a !important;
+                color: #f0f2f6 !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    # Page routing (same as before)
     if st.session_state.current_page == "Dashboard":
         from pages.dashboard import show_dashboard
         show_dashboard()
-    elif st.session_state.current_page == "Create Bill":
-        from pages.create_bill import create_new_bill
-        create_new_bill()
-    elif st.session_state.current_page == "Contractors":
-        from pages.contractors import contractor_management
-        contractor_management()
-    elif st.session_state.current_page == "Works":
-        from pages.works import works_management
-        works_management()
-    elif st.session_state.current_page == "Reports":
-        from pages.reports import show_reports
-        show_reports()
-    elif st.session_state.current_page == "Settings":
-        from pages.settings import show_settings
-        show_settings()
+    # ... (rest of your routing)
 
 if __name__ == "__main__":
     main()

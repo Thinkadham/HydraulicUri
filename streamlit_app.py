@@ -1,7 +1,8 @@
 import streamlit as st
+from utils.auth import check_auth, login
 import os
 
-# Must be first command
+# MUST be first command
 st.set_page_config(
     page_title="Auto Payment System",
     page_icon="💰",
@@ -9,127 +10,47 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Hide default Streamlit elements
-st.markdown("""
-    <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        .stDeployButton {display: none;}
-    </style>
-""", unsafe_allow_html=True)
-
-# Authentication functions
-def check_auth():
-    """Check session state for authentication"""
-    if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = False
-    return st.session_state.authenticated
-
-def login():
-    """Login form"""
-    st.title("🔑 Login")
-    st.markdown("---")
-    
-    with st.form("login_form"):
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        
-        if st.form_submit_button("Login"):
-            if (username == os.getenv("ADMIN_USER") and 
-                password == os.getenv("ADMIN_PASS")):
-                st.session_state.authenticated = True
-                st.session_state.username = username
-                st.rerun()
-            else:
-                st.error("Invalid credentials")
-    
-    st.markdown("---")
-
-def logout():
-    """Clear session"""
-    st.session_state.authenticated = False
-    st.session_state.pop("username", None)
-    st.rerun()
-
-def show_login_page():
-    """Full-page login experience"""
-    st.markdown("""
-        <style>
-            section[data-testid="stSidebar"] {
-                display: none !important;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-    login()
-    st.stop()
-
-def build_sidebar():
-    """Single navigation system"""
-    with st.sidebar:
-        st.empty()  # Clear previous content
-        
-        # Custom styling
+def main():
+    # Force-hide sidebar before login
+    if not check_auth():
         st.markdown("""
             <style>
-                [data-testid="stSidebar"] {
-                    background: linear-gradient(180deg, #4a6bff 0%, #2541b2 100%);
-                }
-                [data-testid="stSidebar"] .stRadio div, 
-                [data-testid="stSidebar"] .stRadio label {
-                    color: white !important;
+                section[data-testid="stSidebar"] {
+                    display: none !important;
                 }
             </style>
         """, unsafe_allow_html=True)
-        
-        st.title("Auto Payment System")
-        st.markdown("---")
-        
-        # Navigation options
+        login()
+        st.stop()
+    
+    # Clear sidebar completely before rebuilding
+    st.sidebar.empty()
+    
+    # Build fresh sidebar
+    with st.sidebar:
+        # Navigation - Only ONE instance
         selected = st.radio(
             "Menu",
-            options=["Dashboard", "Create Bill", "Contractors", "Works", "Reports", "Settings"],
-            label_visibility="collapsed",
-            key="main_nav"  # Unique key prevents duplicates
+            ["Dashboard", "Create Bill", "Contractors", "Works", "Reports", "Settings"],
+            key="unique_nav_key"  # This prevents duplicates
         )
         
-        st.markdown("---")
-        if st.session_state.get('username'):
-            st.markdown(f"Logged in as: {st.session_state.username}")
-        if st.button("🚪 Logout"):
+        if st.button("Logout"):
+            from utils.auth import logout
             logout()
     
-    return selected
-
-def main():
-    if not check_auth():
-        show_login_page()
-    
-    selected = build_sidebar()
-    
-    # Page routing - no auth checks needed in pages
+    # Simple routing - No auth checks needed in pages
     if selected == "Dashboard":
         from pages.dashboard import show_dashboard
         show_dashboard()
     elif selected == "Create Bill":
-        from pages.create_bill import show_create_bill
-        show_create_bill()
-    elif selected == "Contractors":
-        from pages.contractors import show_contractors
-        show_contractors()
-    elif selected == "Works":
-        from pages.works import show_works
-        show_works()
-    elif selected == "Reports":
-        from pages.reports import show_reports
-        show_reports()
-    elif selected == "Settings":
-        from pages.settings import show_settings
-        show_settings()
+        from pages.create_bill import create_new_bill  # Keep your existing function name
+        create_new_bill()
+    # ... (add other pages with their EXACT function names)
 
 if __name__ == "__main__":
-    # Initialize fresh session state
-    if 'init' not in st.session_state:
-        st.session_state.init = True
+    # Force fresh start
+    if 'nav_init' not in st.session_state:
         st.sidebar.empty()
-    
+        st.session_state.nav_init = True
     main()

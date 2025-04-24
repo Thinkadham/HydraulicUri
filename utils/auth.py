@@ -5,14 +5,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def check_auth():
-    """Check authentication status"""
-    if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = False
-    return st.session_state.authenticated
+    """Check if user is authenticated"""
+    return st.session_state.get('authenticated', False)
 
 def login():
-    """Login form without image dependency"""
-    st.title("🔐 Login")
+    """Simple login form"""
+    st.title("Login")
     
     with st.form("login_form"):
         username = st.text_input("Username")
@@ -22,13 +20,11 @@ def login():
             if (username == os.getenv("ADMIN_USER") and 
                 password == os.getenv("ADMIN_PASS")):
                 st.session_state.authenticated = True
-                st.session_state.username = username
                 st.rerun()
             else:
                 st.error("Invalid credentials")
 
 def logout():
-    """Clear session and force refresh"""
+    """Clear session and refresh"""
     st.session_state.authenticated = False
-    st.session_state.pop("username", None)
-    st.experimental_rerun()
+    st.rerun()

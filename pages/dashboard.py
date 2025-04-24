@@ -1,62 +1,146 @@
 import streamlit as st
 import pandas as pd
 from utils.db import get_contractors, get_works, get_bills
+from datetime import datetime, timedelta
+
+# Cache data fetches to improve performance
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def fetch_contractors():
+    return get_contractors() or []
+
+@st.cache_data(ttl=300)
+def fetch_works():
+    return get_works() or []
+
+@st.cache_data(ttl=60)  # Cache bills for just 1 minute since they change more frequently
+def fetch_bills():
+    return get_bills() or []
 
 def show_dashboard():
     st.header("Dashboard Overview")
     
-    # Stats columns
-    col1, col2, col3 = st.columns(3)
+    # Refresh button in the header
+    col1, col2 = st.columns([4, 1])
     with col1:
+        st.subheader("Key Metrics")
+    with col2:
+        if st.button("🔄 Refresh Data", help="Reload all dashboard data"):
+            st.cache_data.clear()
+            st.rerun()
+    
+    # Stats columns with error handling
+    metric_col1, metric_col2, metric_col3 = st.columns(3)
+    
+    with metric_col1:
         try:
-            contractors = get_contractors() or []
+            contractors = fetch_contractors()
             st.metric("Total Contractors", len(contractors))
         except Exception as e:
-            st.error(f"Error loading contractors: {str(e)}")
+            st.error(f"Contractor data unavailable")
             st.metric("Total Contractors", "N/A")
-    
-    with col2:
+
+    with metric_col2:
         try:
-            works = get_works() or []
+            works = fetch_works()
             st.metric("Active Works", len(works))
         except Exception as e:
-            st.error(f"Error loading works: {str(e)}")
+            st.error(f"Works data unavailable")
             st.metric("Active Works", "N/A")
-    
-    with col3:
+
+    with metric_col3:
         try:
-            bills = get_bills() or []
+            bills = fetch_bills()
             pending = len([b for b in bills if b.get("status") == "Pending"])
             st.metric("Pending Bills", pending)
         except Exception as e:
-            st.error(f"Error loading bills: {str(e)}")
+            st.error(f"Bills data unavailable")
             st.metric("Pending Bills", "N/A")
-    
+
     st.markdown("---")
     
-    # Recent bills table
+    # Date range filter for bills
     st.subheader("Recent Bills")
-    try:
-        if bills:
-            df = pd.DataFrame(bills)[:5]  # Show last 5 bills
-            columns_to_show = ["bill_no", "payee", "work", "amount", "status"]
-            # Only show columns that exist in the data
-            available_columns = [col for col in columns_to_show if col in df.columns]
-            st.dataframe(
-                df[available_columns], 
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "amount": st.column_config.NumberColumn(format="₹%.2f")
-                }
-            )
-        else:
-            st.info("No bills found")
-    except Exception as e:
-        st.error(f"Error displaying bills: {str(e)}")
+    default_end = datetime.now()
+    default_start = default_end - timedelta(days=30)
     
+    date_col1, date_col2 = st.columns(2)
+    with date_col1:
+        start_date = st.date_input("From date", value=default_start)
+    with date_col2:
+        end_date = st.date_input("To date", value=default_end)
+    
+    # Visualization and data section
+    tab1, tab2 = st.tabs(["Bills Table", "Expenditure Trends"])
+    
+    with tab1:
+        try:
+            if bills:
+                # Convert date strings to datetime objects for filtering
+                filtered_bills = [
+                    b for b in bills 
+                    if start_date <= datetime.strptime(b.get('created_at', default_end.isoformat())[:10], "%Y-%m-%d").date() <= end_date
+                ]
+                
+                if filtered_bills:
+                    df = pd.DataFrame(filtered_bills).sort_values('created_at', ascending=False)
+                    columns_to_show = ["bill_no", "payee", "work", "billed_amount", "status", "created_at"]
+                    available_columns = [col for col in columns_to_show if col in df.columns]
+                    
+                    st.dataframe(
+                        df[available_columns],
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "billed_amount": st.column_config.NumberColumn(
+                                "Amount",
+                                format="₹%.2f",
+                                help="Total billed amount"
+                            ),
+                            "created_at": st.column_config.DateColumn(
+                                "Date",
+                                format="DD-MM-YYYY"
+                            )
+                        }
+                    )
+                else:
+                    st.info("No bills found in selected date range")
+            else:
+                st.info("No bills found in database")
+        except Exception as e:
+            st.error(f"Error displaying bills: {str(e)}")
+
+    with tab2:
+        try:
+            if bills:
+                # Prepare data for visualization
+                df = pd.DataFrame(bills)
+                df['created_at'] = pd.to_datetime(df['created_at']).dt.date
+                df = df[df['created_at'].between(start_date, end_date)]
+                
+                if not df.empty:
+                    # Group by date and sum amounts
+                    daily_totals = df.groupby('created_at')['billed_amount'].sum().reset_index()
+                    
+                    # Display chart
+                    st.area_chart(
+                        daily_totals.set_index('created_at'),
+                        use_container_width=True,
+                        color="#4CAF50"  # Green color
+                    )
+                    
+                    # Show monthly total
+                    monthly_total = daily_totals['billed_amount'].sum()
+                    st.metric("Total Expenditure in Period", f"₹{monthly_total:,.2f}")
+                else:
+                    st.info("No expenditure data in selected date range")
+            else:
+                st.info("No bills data available for visualization")
+        except Exception as e:
+            st.error(f"Error generating expenditure trends: {str(e)}")
+
     st.markdown("---")
-    st.caption("Auto Payment System v2.0.1")
+    st.caption("Auto Payment System v2.0.1 | Dashboard last refreshed: " + 
+              datetime.now().strftime("%d %b %Y %H:%M:%S"))
 
 # Run the function
 show_dashboard()

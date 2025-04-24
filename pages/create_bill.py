@@ -2,8 +2,7 @@ import streamlit as st
 import datetime
 from utils.db import get_contractors, get_works, insert_bill, update_work_expenditure
 from utils.helpers import amount_in_words, calculate_deductions
-from utils.form_manager import FormManager  # Assuming you've saved the FormManager in this module
-
+from utils.form_manager import FormManager  # Import form manager class
 def create_new_bill():
     # Initialize FormManager
     form_manager = FormManager("create_bill")

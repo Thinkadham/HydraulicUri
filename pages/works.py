@@ -2,12 +2,7 @@ import streamlit as st
 import pandas as pd
 from utils.db import get_works, insert_work
 from utils.helpers import current_date
-from utils.auth import check_auth
 
-# Only show content if authenticated
-if not check_auth():
-    st.warning("Please log in to access this page")
-    st.stop()
 
 def works_management():
     st.header("Works Management")

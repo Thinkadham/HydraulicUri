@@ -2,13 +2,22 @@ import streamlit as st
 from utils.auth import check_auth, login
 import os
 
-# MUST be first command
+# MUST be the absolute first command
 st.set_page_config(
     page_title="Auto Payment System",
     page_icon="💰",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Hide default Streamlit elements
+st.markdown("""
+    <style>
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        .stDeployButton {display: none;}
+    </style>
+""", unsafe_allow_html=True)
 
 def main():
     # Force-hide sidebar before login
@@ -23,34 +32,46 @@ def main():
         login()
         st.stop()
     
-    # Clear sidebar completely before rebuilding
+    # COMPLETELY remove previous sidebar content
     st.sidebar.empty()
     
-    # Build fresh sidebar
+    # Build fresh navigation - ONLY ONCE
     with st.sidebar:
-        # Navigation - Only ONE instance
+        # Navigation with UNIQUE KEY
         selected = st.radio(
             "Menu",
-            ["Dashboard", "Create Bill", "Contractors", "Works", "Reports", "Settings"],
-            key="unique_nav_key"  # This prevents duplicates
+            options=["Dashboard", "Create Bill", "Contractors", "Works", "Reports", "Settings"],
+            key="THE_ONE_AND_ONLY_NAVIGATION",  # Critical unique key
+            label_visibility="collapsed"
         )
         
-        if st.button("Logout"):
+        st.markdown("---")
+        if st.button("🚪 Logout", key="unique_logout_button"):
             from utils.auth import logout
             logout()
     
-    # Simple routing - No auth checks needed in pages
+    # Route to pages - using YOUR existing function names
     if selected == "Dashboard":
         from pages.dashboard import show_dashboard
         show_dashboard()
     elif selected == "Create Bill":
-        from pages.create_bill import create_new_bill  # Keep your existing function name
+        from pages.create_bill import create_new_bill  # Keep your exact function name
         create_new_bill()
-    # ... (add other pages with their EXACT function names)
+    elif selected == "Contractors":
+        from pages.contractors import contractor_management
+        contractor_management()
+    elif selected == "Works":
+        from pages.works import works_management
+        works_management()
+    elif selected == "Reports":
+        from pages.reports import show_reports
+        show_reports()
+    elif selected == "Settings":
+        from pages.settings import show_settings
+        show_settings()
 
 if __name__ == "__main__":
-    # Force fresh start
-    if 'nav_init' not in st.session_state:
-        st.sidebar.empty()
-        st.session_state.nav_init = True
+    # Nuclear option - ensures clean start
+    st.session_state.clear()
+    st.sidebar.empty()
     main()

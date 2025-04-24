@@ -51,3 +51,8 @@ def form_submit_button(self, form_name, label="Submit", **kwargs):
     """Create form submit button with automatic key"""
     form_key = self.get_form_key(form_name)
     return st.form_submit_button(label, key=f"{form_key}_submit", **kwargs)
+
+def file_uploader(self, label, form_name, field_name, **kwargs):
+    """Create file uploader with automatic key"""
+    form_key = self.get_form_key(form_name)
+    return st.file_uploader(label, key=f"{form_key}_{field_name}", **kwargs)

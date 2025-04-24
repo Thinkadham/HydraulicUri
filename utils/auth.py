@@ -20,19 +20,18 @@ def login():
     """Login form with proper credential validation"""
     st.title("Login")
     
-    # Get hashed credentials from environment
+    # Get credentials from environment
     admin_user = os.getenv("ADMIN_USER")
-    admin_pass_hash = hash_password(os.getenv("ADMIN_PASS"))
+    admin_pass = os.getenv("ADMIN_PASS")
     
     with st.form("login_form"):
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
         
         if st.form_submit_button("Login"):
-            # Validate credentials
-            if username == admin_user and hash_password(password) == admin_pass_hash:
+            if username == admin_user and password == admin_pass:
                 st.session_state.authenticated = True
-                st.session_state.username = username
+                st.session_state.username = username  # Store username
                 st.rerun()
             else:
                 st.error("Invalid credentials")

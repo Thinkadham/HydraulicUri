@@ -1,5 +1,6 @@
 import streamlit as st
 from utils.db import get_contractors, get_works, get_bills
+from utils.auth import check_auth
 
 # Only show content if authenticated
 if not check_auth():

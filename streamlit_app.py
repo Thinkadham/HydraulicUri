@@ -1,5 +1,5 @@
 import streamlit as st
-from utils.auth import check_auth, login, logout
+from utils.auth import check_auth, login
 from PIL import Image
 import os
 
@@ -11,54 +11,67 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Load logo (create a 'assets' folder in your project root)
+# Load logo function
 def load_logo():
     try:
-        return Image.open("assets/logo.png")  # Add your logo.png to assets folder
-    except:
+        # Try different possible logo paths
+        logo_paths = [
+            "assets/logo.png",
+            "logo.png",
+            "images/logo.png"
+        ]
+        for path in logo_paths:
+            if os.path.exists(path):
+                return Image.open(path)
+        return None
+    except Exception as e:
+        st.error(f"Error loading logo: {str(e)}")
         return None
 
-# Custom sidebar with logo and navigation
-def show_sidebar():
-    logo = load_logo()
-    if logo:
-        st.sidebar.image(logo, width=200)
-    
-    st.sidebar.title("Auto Payment System")
-    st.sidebar.markdown("---")
-    
-    if check_auth():
-        # Navigation menu
-        menu_options = {
-            "Dashboard": "🏠",
-            "Create New Bill": "🧾",
-            "Contractor Management": "👷",
-            "Works Management": "🏗️",
-            "Reports": "📊",
-            "Settings": "⚙️"
-        }
+# Custom sidebar
+def create_sidebar():
+    with st.sidebar:
+        # Display logo
+        logo = load_logo()
+        if logo:
+            st.image(logo, width=200)
+        else:
+            st.title("Auto Payment System")
         
-        selected = st.sidebar.radio(
-            "Navigation",
-            list(menu_options.keys()),
-            format_func=lambda x: f"{menu_options[x]} {x}"
-        )
+        st.markdown("---")
         
-        # Logout button at bottom
-        st.sidebar.markdown("---")
-        if st.sidebar.button("🚪 Logout"):
-            logout()
-        
-        return selected
-    return None
+        if check_auth():
+            # Navigation menu with icons
+            menu_options = {
+                "Dashboard": "🏠",
+                "Create New Bill": "🧾",
+                "Contractor Management": "👷",
+                "Works Management": "🏗️",
+                "Reports": "📊",
+                "Settings": "⚙️"
+            }
+            
+            selected = st.radio(
+                "Navigation",
+                list(menu_options.keys()),
+                format_func=lambda x: f"{menu_options[x]} {x}",
+                label_visibility="collapsed"
+            )
+            
+            st.markdown("---")
+            if st.button("🚪 Logout"):
+                from utils.auth import logout
+                logout()
+            
+            return selected
+        return None
 
 # Main App
 def main():
-    selected_page = show_sidebar()
+    selected_page = create_sidebar()
     
     if selected_page:
         st.title(f"{selected_page}")
-        st.caption(f"Version 2.0.1 | Logged in as: {st.session_state.get('username', 'admin')}")
         
         # Page routing
         if selected_page == "Dashboard":

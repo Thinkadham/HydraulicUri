@@ -2,8 +2,9 @@
 showSidebarNavigation = false  # Disables default sidebar nav
 
 [theme]
+base = "dark"  # Force dark theme
 primaryColor = "#4a6bff"
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#f0f2f6"
-textColor = "#31333f"
+backgroundColor = "#0e1117"
+secondaryBackgroundColor = "#1a1a1a"
+textColor = "#f0f2f6"
 font = "sans serif"

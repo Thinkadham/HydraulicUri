@@ -8,10 +8,10 @@ def create_new_bill():
     # Initialize FormManager
     form_manager = FormManager("create_bill")
     
-    st.header("Create New Bill")
+    st.header("📝 Create New Bill")
     
+    # Load data with error handling
     try:
-        # Fetch data from Supabase with error handling
         contractors = get_contractors()
         works = get_works()
         
@@ -23,30 +23,32 @@ def create_new_bill():
         st.error(f"Database error: {str(e)}")
         return
 
+    # Main form
     with form_manager.form("bill_form", clear_on_submit=True):
-        # ========== Payee Information Section ==========
-        st.subheader("Payee Information")
-        col1, col2 = st.columns(2)
+        # ========== Payee Section ==========
+        st.subheader("🧑 Payee Information")
+        payee = form_manager.selectbox(
+            "Select Payee*", 
+            "bill_form", 
+            "payee", 
+            options=[c["name"] for c in contractors],
+            help="Select contractor from the list"
+        )
         
-        with col1:
-            payee = form_manager.selectbox(
-                "Select Payee*", 
-                "bill_form", 
-                "payee", 
-                options=[c["name"] for c in contractors],
-                help="Select contractor from the list"
-            )
-            payee_data = next((c for c in contractors if c["name"] == payee), None)
+        # Get payee details
+        payee_data = next((c for c in contractors if c["name"] == payee), None)
+        if not payee_data:
+            st.error("Selected payee data not found")
+            st.stop()
             
-            if not payee_data:
-                st.error("Selected payee data not found")
-                st.stop()
-                
+        # Display payee info in columns
+        col1, col2 = st.columns(2)
+        with col1:
             form_manager.text_input("S/O", "bill_form", "so", 
                                  value=payee_data.get("parentage", ""),
                                  disabled=True)
-            form_manager.text_input("R/O", "bill_form", "ro",
-                                 value=payee_data.get("resident", ""),
+            form_manager.text_input("Class", "bill_form", "class",
+                                 value=payee_data.get("class", ""),
                                  disabled=True)
             
         with col2:
@@ -58,16 +60,16 @@ def create_new_bill():
                                  disabled=True)
 
         # ========== Bill Details Section ==========
-        st.subheader("Bill Details")
+        st.subheader("📄 Bill Details")
         bill_type = form_manager.selectbox(
             "Bill Type*", 
             "bill_form", 
             "bill_type", 
             options=["Plan", "Non Plan"],
-            help="Select bill classification type"
+            index=0
         )
 
-        # Dynamic filters for Major Head > Scheme > Work
+        # Dynamic work filters
         major_heads = sorted(list(set(w["mh"] for w in works)))
         major_head = form_manager.selectbox(
             "Major Head*", 
@@ -86,7 +88,7 @@ def create_new_bill():
         
         filtered_works = [w for w in works if w["mh"] == major_head and w["scheme"] == scheme]
         work = form_manager.selectbox(
-            "Name of Work/Particulars*", 
+            "Work/Particulars*", 
             "bill_form", 
             "work", 
             options=[w["work_name"] for w in filtered_works]
@@ -97,8 +99,8 @@ def create_new_bill():
             st.error("Selected work data not found")
             st.stop()
 
-        # ========== Financial Details Section ==========
-        st.subheader("Financial Details")
+        # ========== Financial Section ==========
+        st.subheader("💰 Financial Details")
         col3, col4 = st.columns(2)
         
         with col3:
@@ -111,7 +113,7 @@ def create_new_bill():
                 format="%.2f"
             )
             deduct_payments = form_manager.number_input(
-                "Deduct Payments (₹)", 
+                "Deductions (₹)", 
                 "bill_form", 
                 "deduct_payments", 
                 min_value=0.0,
@@ -129,9 +131,8 @@ def create_new_bill():
             )
             
         with col4:
-            # Deductions
             income_tax_percent = form_manager.number_input(
-                "Income Tax (%)", 
+                "Income Tax (%)*", 
                 "bill_form", 
                 "income_tax_percent", 
                 min_value=0.0, 
@@ -140,7 +141,7 @@ def create_new_bill():
                 step=0.01
             )
             deposit_percent = form_manager.number_input(
-                "Deposit (%)", 
+                "Deposit (%)*", 
                 "bill_form", 
                 "deposit_percent", 
                 min_value=0.0, 
@@ -158,8 +159,18 @@ def create_new_bill():
                 step=0.01
             )
 
+        # ========== Additional Details ==========
+        st.subheader("📝 Additional Information")
+        form_manager.text_area(
+            "Nomenclature", 
+            "bill_form", 
+            "nomenclature", 
+            value=work_data.get("nomenclature", ""),
+            height=100
+        )
+        
         # ========== Form Submission ==========
-        submitted = form_manager.form_submit_button("bill_form", "Generate Bill")
+        submitted = form_manager.form_submit_button("bill_form", "💾 Generate Bill")
         
         if submitted:
             # Validate required fields
@@ -173,15 +184,17 @@ def create_new_bill():
             
             missing_fields = [field for field, value in required_fields.items() if not value]
             if missing_fields:
-                st.error(f"Missing required fields: {', '.join(missing_fields)}")
+                st.error(f"❌ Missing required fields: {', '.join(missing_fields)}")
                 st.stop()
 
-            # Calculate final amounts
+            # Process bill
             try:
-                income_tax, deposit, cess, total_deduction, net_amount = calculate_deductions(
+                # Calculate deductions
+                deductions = calculate_deductions(
                     payable, income_tax_percent, deposit_percent, cess_percent
                 )
                 
+                # Prepare bill data
                 bill_data = {
                     "payee": payee,
                     "payee_id": payee_data.get("id"),
@@ -193,26 +206,30 @@ def create_new_bill():
                     "billed_amount": billed_amount,
                     "deduct_payments": deduct_payments,
                     "payable": payable,
-                    "income_tax_amount": income_tax,
-                    "deposit_amount": deposit,
-                    "cess_amount": cess,
-                    "total_deduction": total_deduction,
-                    "net_amount": net_amount,
-                    "amount_in_words": amount_in_words(net_amount),
+                    "income_tax_amount": deductions[0],
+                    "deposit_amount": deductions[1],
+                    "cess_amount": deductions[2],
+                    "total_deduction": deductions[3],
+                    "net_amount": deductions[4],
+                    "amount_in_words": amount_in_words(deductions[4]),
                     "status": "Pending",
-                    "created_at": datetime.datetime.now().isoformat()
+                    "created_at": datetime.datetime.now().isoformat(),
+                    "nomenclature": work_data.get("nomenclature", "")
                 }
                 
-                # Database operations
+                # Save to database
                 result = insert_bill(bill_data)
-                if result.data:
-                    st.success("Bill created successfully!")
+                if result:
                     # Update work expenditure
                     new_expenditure = work_data.get("expenditure", 0) + billed_amount
                     update_work_expenditure(work_data["id"], new_expenditure)
+                    
+                    st.success("✅ Bill created successfully!")
+                    st.balloons()
                     st.rerun()
                     
             except Exception as e:
-                st.error(f"Error processing bill: {str(e)}")
+                st.error(f"❌ Error processing bill: {str(e)}")
 
-create_new_bill()
+if __name__ == "__main__":
+    create_new_bill()

@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from utils.db import get_contractors, insert_contractor
 from utils.helpers import current_date
-
+from streamlit_app import get_form_key
 
 def contractor_management():
     st.header("Contractor Management")
@@ -23,6 +23,8 @@ def contractor_management():
             st.error(f"Error loading contractors: {str(e)}")
         
     with tab2:
+         # Use unique form key
+        form_key = get_form_key("contractors", "add_contractor")
         with st.form("contractor_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
             

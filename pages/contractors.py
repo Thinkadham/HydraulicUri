@@ -2,6 +2,12 @@ import streamlit as st
 import pandas as pd
 from utils.db import get_contractors, insert_contractor
 from utils.helpers import current_date
+from utils.auth import check_auth
+
+# Authentication check
+if not check_auth():
+    st.warning("Please login first")
+    st.stop()
 
 
 def contractor_management():

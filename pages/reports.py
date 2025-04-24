@@ -3,6 +3,11 @@ import pandas as pd
 import datetime
 from utils.db import get_bills, get_works
 
+# Only show content if authenticated
+if not check_auth():
+    st.warning("Please log in to access this page")
+    st.stop()
+
 def show_reports():
     st.header("Reports")
     

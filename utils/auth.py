@@ -1,24 +1,53 @@
 import streamlit as st
 import os
 from dotenv import load_dotenv
+import hashlib
 
 # Load environment variables
 load_dotenv()
 
+def hash_password(password):
+    """Simple password hashing"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
 def check_auth():
+    """Check if user is authenticated"""
     if 'authenticated' not in st.session_state:
         st.session_state.authenticated = False
     return st.session_state.authenticated
 
 def login():
+    """Login form with proper credential validation"""
     st.title("Login")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
     
-    if st.button("Login"):
-        # In a real app, verify credentials against Supabase auth
-        if username == os.getenv("ADMIN_USER") and password == os.getenv("ADMIN_PASS"):
+    # Get hashed credentials from environment
+    admin_user = os.getenv("ADMIN_USER")
+    admin_pass_hash = hash_password(os.getenv("ADMIN_PASS"))
+    
+    with st.form("login_form"):
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        
+        if st.form_submit_button("Login"):
+            # Validate credentials
+            if username == admin_user and hash_password(password) == admin_pass_hash:
+                st.session_state.authenticated = True
+                st.session_state.username = username
+                st.rerun()
+            else:
+                st.error("Invalid credentials")
+    
+    # For development only - remove in production
+    if os.getenv("ENVIRONMENT") == "development":
+        st.warning("Development mode active")
+        if st.button("Bypass Login (Dev Only)"):
             st.session_state.authenticated = True
+            st.session_state.username = "dev_user"
             st.rerun()
-        else:
-            st.error("Invalid credentials")
+
+def logout():
+    """Logout the current user"""
+    st.session_state.authenticated = False
+    st.session_state.pop("username", None)
+    st.info("You have been logged out")
+    st.stop()

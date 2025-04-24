@@ -2,7 +2,7 @@ import streamlit as st
 from utils.auth import check_auth, login
 import os
 
-# MUST be the absolute first command
+# MUST be first command
 st.set_page_config(
     page_title="Auto Payment System",
     page_icon="💰",
@@ -10,18 +10,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Hide default Streamlit elements
-st.markdown("""
-    <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        .stDeployButton {display: none;}
-    </style>
-""", unsafe_allow_html=True)
-
 def main():
-    # Force-hide sidebar before login
-    if not check_auth():
+    # Initialize session if not exists
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+    
+    # Show login if not authenticated
+    if not st.session_state.authenticated:
         st.markdown("""
             <style>
                 section[data-testid="stSidebar"] {
@@ -32,30 +27,28 @@ def main():
         login()
         st.stop()
     
-    # COMPLETELY remove previous sidebar content
-    st.sidebar.empty()
-    
-    # Build fresh navigation - ONLY ONCE
+    # Build sidebar only after login
     with st.sidebar:
-        # Navigation with UNIQUE KEY
+        st.title("Auto Payment System")
+        st.markdown("---")
+        
         selected = st.radio(
             "Menu",
-            options=["Dashboard", "Create Bill", "Contractors", "Works", "Reports", "Settings"],
-            key="THE_ONE_AND_ONLY_NAVIGATION",  # Critical unique key
-            label_visibility="collapsed"
+            ["Dashboard", "Create Bill", "Contractors", "Works", "Reports", "Settings"],
+            key="main_nav"
         )
         
         st.markdown("---")
-        if st.button("🚪 Logout", key="unique_logout_button"):
-            from utils.auth import logout
-            logout()
+        if st.button("Logout"):
+            st.session_state.authenticated = False
+            st.rerun()
     
-    # Route to pages - using YOUR existing function names
+    # Page routing
     if selected == "Dashboard":
         from pages.dashboard import show_dashboard
         show_dashboard()
     elif selected == "Create Bill":
-        from pages.create_bill import create_new_bill  # Keep your exact function name
+        from pages.create_bill import create_new_bill
         create_new_bill()
     elif selected == "Contractors":
         from pages.contractors import contractor_management
@@ -71,7 +64,4 @@ def main():
         show_settings()
 
 if __name__ == "__main__":
-    # Nuclear option - ensures clean start
-    st.session_state.clear()
-    st.sidebar.empty()
     main()

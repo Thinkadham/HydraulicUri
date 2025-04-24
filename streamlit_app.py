@@ -2,46 +2,31 @@ import streamlit as st
 from utils.auth import check_auth, login
 import os
 
-# MUST be first command
+# Must be first command
 st.set_page_config(
     page_title="Auto Payment System",
     page_icon="💰",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 def main():
-    # Initialize session if not exists
-    if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = False
-    
-    # Show login if not authenticated
-    if not st.session_state.authenticated:
-        st.markdown("""
-            <style>
-                section[data-testid="stSidebar"] {
-                    display: none !important;
-                }
-            </style>
-        """, unsafe_allow_html=True)
+    # Authentication check
+    if not check_auth():
         login()
         st.stop()
     
-    # Build sidebar only after login
+    # Custom sidebar - won't conflict with default nav
     with st.sidebar:
         st.title("Auto Payment System")
-        st.markdown("---")
-        
         selected = st.radio(
             "Menu",
             ["Dashboard", "Create Bill", "Contractors", "Works", "Reports", "Settings"],
             key="main_nav"
         )
         
-        st.markdown("---")
         if st.button("Logout"):
-            st.session_state.authenticated = False
-            st.rerun()
+            from utils.auth import logout
+            logout()
     
     # Page routing
     if selected == "Dashboard":

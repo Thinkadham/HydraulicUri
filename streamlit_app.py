@@ -2,6 +2,7 @@ import streamlit as st
 from utils.auth import check_auth, login
 import os
 from PIL import Image
+import hashlib
 
 # Must be first command
 st.set_page_config(
@@ -10,6 +11,11 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+def get_form_key(page_name, form_name):
+    """Generate unique form keys to prevent collisions"""
+    base_key = f"{page_name}_{form_name}"
+    return hashlib.md5(base_key.encode()).hexdigest()[:10]
 
 def load_logo():
     """Load logo with dark theme support"""

@@ -4,6 +4,7 @@ import os
 from PIL import Image
 import hashlib
 
+
 # Must be first command
 st.set_page_config(
     page_title="Auto Payment System",
@@ -11,6 +12,11 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+if st.secrets.get("DEV_MODE", False):  # development mode
+    st.cache_data.clear()
+    st.cache_resource.clear()
+    st.session_state.clear()
 
 def get_form_key(page_name, form_name):
     """Generate unique form keys to prevent collisions"""

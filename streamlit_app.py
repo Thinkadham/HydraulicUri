@@ -2,51 +2,51 @@ import streamlit as st
 from utils.auth import check_auth, login
 import os
 
-# App Configuration - NO SIDEBAR
+# App Configuration
 st.set_page_config(
     page_title="Auto Payment System",
     page_icon="💰",
-    layout="centered",  # Changed from "wide" to minimize space
-    initial_sidebar_state="collapsed"  # Force sidebar closed
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 def main():
-    # Force-hide the sidebar completely before login
-    st.markdown("""
-        <style>
-            section[data-testid="stSidebar"] {
-                display: none !important;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-
+    # Force-hide sidebar before login
     if not check_auth():
+        st.markdown("""
+            <style>
+                section[data-testid="stSidebar"] {
+                    display: none !important;
+                }
+            </style>
+        """, unsafe_allow_html=True)
         login()
-        st.stop()  # Stop execution here until logged in
+        st.stop()
     
-    # Only show sidebar AFTER login
-    st.markdown("""
-        <style>
-            section[data-testid="stSidebar"] {
-                display: block !important;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-
-    # Now build the sidebar
+    # Show styled sidebar after login
     with st.sidebar:
         st.title("Auto Payment System")
         st.markdown("---")
         
-        # Navigation menu
+        # Proper navigation using radio buttons
+        nav_options = {
+            "Dashboard": "🏠",
+            "Create Bill": "🧾", 
+            "Contractors": "👷",
+            "Works": "🏗️",
+            "Reports": "📊",
+            "Settings": "⚙️"
+        }
+        
         selected = st.radio(
-            "Navigation",
-            options=["Dashboard", "Create Bill", "Contractors", "Works", "Reports", "Settings"],
+            "Menu",
+            options=list(nav_options.keys()),
+            format_func=lambda x: f"{nav_options[x]} {x}",
             label_visibility="collapsed"
         )
         
         st.markdown("---")
-        if st.button("Logout"):
+        if st.button("🚪 Logout"):
             from utils.auth import logout
             logout()
     

@@ -44,6 +44,23 @@ def build_sidebar():
         # Custom title
         st.title("Auto Payment System")
         st.markdown("---")
+
+        # Add the custom styling HERE (right before building navigation elements)
+        custom_sidebar_style = """
+            <style>
+                [data-testid="stSidebar"] {
+                    background: linear-gradient(180deg, #4a6bff 0%, #2541b2 100%);
+                    color: white;
+                }
+                [data-testid="stSidebar"] .stRadio div {
+                    color: white;
+                }
+                [data-testid="stSidebar"] .stRadio label {
+                    color: white;
+                }
+            </style>
+        """
+        st.markdown(custom_sidebar_style, unsafe_allow_html=True)
         
         # Our custom navigation
         nav_options = {

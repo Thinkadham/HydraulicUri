@@ -2,9 +2,15 @@ import streamlit as st
 from utils.auth import check_auth, login
 import os
 
-# Initialize session state for sidebar control
-if 'sidebar_initialized' not in st.session_state:
-    st.session_state.sidebar_initialized = False
+# Remove default Streamlit menu and footer
+hide_streamlit_style = """
+    <style>
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        .stDeployButton {display: none;}
+    </style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # App Configuration
 st.set_page_config(
@@ -16,7 +22,7 @@ st.set_page_config(
 
 def show_login_page():
     """Handles pre-login state with completely hidden sidebar"""
-    # Hide sidebar completely using CSS
+    # Hide sidebar using CSS
     st.markdown("""
         <style>
             section[data-testid="stSidebar"] {
@@ -26,23 +32,20 @@ def show_login_page():
     """, unsafe_allow_html=True)
     
     # Show centered login form
-    login_container = st.container()
-    with login_container:
-        cols = st.columns([1, 2, 1])
-        with cols[1]:
-            login()
+    login()
     st.stop()
 
-def build_sidebar_navigation():
-    """Builds the single, clean navigation system"""
-    st.sidebar.empty()  # Completely clear the sidebar
-    
+def build_sidebar():
+    """Builds our custom navigation sidebar"""
     with st.sidebar:
-        # App title
+        # Clear any existing elements
+        st.empty()
+        
+        # Custom title
         st.title("Auto Payment System")
         st.markdown("---")
         
-        # Navigation options with icons
+        # Our custom navigation
         nav_options = {
             "Dashboard": "🏠",
             "Create Bill": "🧾", 
@@ -52,21 +55,18 @@ def build_sidebar_navigation():
             "Settings": "⚙️"
         }
         
-        # Single navigation control
         selected = st.radio(
             "Menu",
             options=list(nav_options.keys()),
             format_func=lambda x: f"{nav_options[x]} {x}",
             label_visibility="collapsed",
-            key="main_navigation"  # Unique key to prevent duplicates
+            key="unique_nav_key"  # Prevents duplicate rendering
         )
         
         st.markdown("---")
-        
-        # User info and logout
         if st.session_state.get('username'):
             st.markdown(f"Logged in as: **{st.session_state.username}**")
-        if st.button("🚪 Logout", key="logout_button"):
+        if st.button("🚪 Logout"):
             from utils.auth import logout
             logout()
     
@@ -76,10 +76,9 @@ def main():
     if not check_auth():
         show_login_page()
     
-    # Build the navigation system exactly once
-    selected = build_sidebar_navigation()
+    selected = build_sidebar()
     
-    # Page routing - import only when needed
+    # Page routing
     if selected == "Dashboard":
         from pages.dashboard import show_dashboard
         show_dashboard()
@@ -100,6 +99,6 @@ def main():
         show_settings()
 
 if __name__ == "__main__":
-    # Clear any existing sidebar elements
+    # Force clear sidebar on startup
     st.sidebar.empty()
     main()

@@ -2,9 +2,12 @@ import streamlit as st
 import pandas as pd
 from utils.db import get_contractors, insert_contractor
 from utils.helpers import current_date
-from streamlit_app import get_form_key
+from form_manager import FormManager  # Import the FormManager class
 
 def contractor_management():
+    # Initialize FormManager
+    form_manager = FormManager("contractor_management")
+    
     st.header("Contractor Management")
     
     tab1, tab2 = st.tabs(["View Contractors", "Add New Contractor"])
@@ -23,26 +26,29 @@ def contractor_management():
             st.error(f"Error loading contractors: {str(e)}")
         
     with tab2:
-         # Use unique form key
-        form_key = get_form_key("contractors", "add_contractor")
-        with st.form("contractor_form", clear_on_submit=True):
+        with form_manager.form("contractor_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
             
             with col1:
-                name = st.text_input("Name*", key="contractor_name")
-                parentage = st.text_input("Parentage/S/O")
-                resident = st.text_input("Resident/R/O")
-                registration = st.text_input("Registration No")
+                name = form_manager.text_input("Name*", "contractor_form", "name")
+                parentage = form_manager.text_input("Parentage/S/O", "contractor_form", "parentage")
+                resident = form_manager.text_input("Resident/R/O", "contractor_form", "resident")
+                registration = form_manager.text_input("Registration No", "contractor_form", "registration")
                 
             with col2:
-                contractor_class = st.selectbox("Class*", ["A", "B", "C", "D", "E"])
-                pan = st.text_input("PAN")
-                gstin = st.text_input("GSTIN")
-                account_no = st.text_input("Account No*")
+                contractor_class = form_manager.selectbox(
+                    "Class*", 
+                    "contractor_form", 
+                    "class", 
+                    options=["A", "B", "C", "D", "E"]
+                )
+                pan = form_manager.text_input("PAN", "contractor_form", "pan")
+                gstin = form_manager.text_input("GSTIN", "contractor_form", "gstin")
+                account_no = form_manager.text_input("Account No*", "contractor_form", "account_no")
                 
             st.markdown("**Required fields*")
             
-            if st.form_submit_button("Add Contractor"):
+            if form_manager.form_submit_button("contractor_form", "Add Contractor"):
                 # Validate required fields
                 if not name or not contractor_class or not account_no:
                     st.error("Please fill in all required fields")

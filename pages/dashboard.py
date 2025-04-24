@@ -1,12 +1,7 @@
 import streamlit as st
 import pandas as pd
 from utils.db import get_contractors, get_works, get_bills
-from utils.auth import check_auth
 
-# Only show content if authenticated
-if not check_auth():
-    st.warning("Please log in to access this page")
-    st.stop()
 
 def show_dashboard():
     st.header("Dashboard")

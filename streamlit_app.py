@@ -1,25 +1,39 @@
 import streamlit as st
 from utils.auth import check_auth, login
-from PIL import Image
 import os
 
-# App Configuration
+# App Configuration - NO SIDEBAR
 st.set_page_config(
     page_title="Auto Payment System",
     page_icon="💰",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="centered",  # Changed from "wide" to minimize space
+    initial_sidebar_state="collapsed"  # Force sidebar closed
 )
 
-def show_empty_sidebar():
-    """Empty sidebar before login"""
-    with st.sidebar:
-        st.title("Auto Payment System")
-        st.markdown("---")
-        st.write("Please login to access the system")
+def main():
+    # Force-hide the sidebar completely before login
+    st.markdown("""
+        <style>
+            section[data-testid="stSidebar"] {
+                display: none !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
-def show_main_sidebar():
-    """Full sidebar after login"""
+    if not check_auth():
+        login()
+        st.stop()  # Stop execution here until logged in
+    
+    # Only show sidebar AFTER login
+    st.markdown("""
+        <style>
+            section[data-testid="stSidebar"] {
+                display: block !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Now build the sidebar
     with st.sidebar:
         st.title("Auto Payment System")
         st.markdown("---")
@@ -35,35 +49,26 @@ def show_main_sidebar():
         if st.button("Logout"):
             from utils.auth import logout
             logout()
-        
-        return selected
-
-def main():
-    if not check_auth():
-        show_empty_sidebar()
-        login()
-    else:
-        selected_page = show_main_sidebar()
-        
-        # Page routing
-        if selected_page == "Dashboard":
-            from pages.dashboard import show_dashboard
-            show_dashboard()
-        elif selected_page == "Create Bill":
-            from pages.create_bill import create_new_bill
-            create_new_bill()
-        elif selected_page == "Contractors":
-            from pages.contractors import contractor_management
-            contractor_management()
-        elif selected_page == "Works":
-            from pages.works import works_management
-            works_management()
-        elif selected_page == "Reports":
-            from pages.reports import show_reports
-            show_reports()
-        elif selected_page == "Settings":
-            from pages.settings import show_settings
-            show_settings()
+    
+    # Page routing
+    if selected == "Dashboard":
+        from pages.dashboard import show_dashboard
+        show_dashboard()
+    elif selected == "Create Bill":
+        from pages.create_bill import create_new_bill
+        create_new_bill()
+    elif selected == "Contractors":
+        from pages.contractors import contractor_management
+        contractor_management()
+    elif selected == "Works":
+        from pages.works import works_management
+        works_management()
+    elif selected == "Reports":
+        from pages.reports import show_reports
+        show_reports()
+    elif selected == "Settings":
+        from pages.settings import show_settings
+        show_settings()
 
 if __name__ == "__main__":
     main()

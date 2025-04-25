@@ -1,17 +1,18 @@
-# utils/form_manager.py
 import streamlit as st
 import hashlib
 
 class FormManager:
     def __init__(self, page_name):
         self.page_name = page_name
+        self.form_keys = {}  # Store form keys for consistency
         self.form_counter = 0
     
     def get_form_key(self, form_name):
-        """Generate unique form key"""
-        self.form_counter += 1
-        base_key = f"{self.page_name}_{form_name}_{self.form_counter}"
-        return hashlib.md5(base_key.encode()).hexdigest()[:10]
+        """Generate consistent form key for all elements in the same form"""
+        if form_name not in self.form_keys:
+            base_key = f"{self.page_name}_{form_name}"
+            self.form_keys[form_name] = hashlib.md5(base_key.encode()).hexdigest()[:10]
+        return self.form_keys[form_name]
     
     def form(self, form_name, **kwargs):
         """Create form context"""
@@ -52,3 +53,18 @@ class FormManager:
         """Create radio buttons"""
         form_key = self.get_form_key(form_name)
         return st.radio(label, options, key=f"{form_key}_{field_name}", **kwargs)
+    
+    def checkbox(self, label, form_name, field_name, **kwargs):
+        """Create checkbox"""
+        form_key = self.get_form_key(form_name)
+        return st.checkbox(label, key=f"{form_key}_{field_name}", **kwargs)
+    
+    def slider(self, label, form_name, field_name, **kwargs):
+        """Create slider"""
+        form_key = self.get_form_key(form_name)
+        return st.slider(label, key=f"{form_key}_{field_name}", **kwargs)
+    
+    def file_uploader(self, label, form_name, field_name, **kwargs):
+        """Create file uploader"""
+        form_key = self.get_form_key(form_name)
+        return st.file_uploader(label, key=f"{form_key}_{field_name}", **kwargs)

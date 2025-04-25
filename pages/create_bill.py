@@ -166,5 +166,10 @@ def create_new_bill():
             # [Keep your existing submission logic here]
             pass
 
+def text_area(self, label, form_name, field_name, **kwargs):
+    form_key = self.get_form_key(form_name)
+    print(f"TEXTAREA KEY: {form_key}_{field_name}")  # Debug line
+    return st.text_area(label, key=f"{form_key}_{field_name}", **kwargs)
+
 if __name__ == "__main__":
     create_new_bill()

@@ -4,7 +4,7 @@ import hashlib
 class FormManager:
     def __init__(self, page_name):
         self.page_name = page_name
-        self.form_keys = {}  # Store form keys for consistency
+        self.form_keys = {}
     
     def get_form_key(self, form_name):
         """Generate consistent form key for all elements in the same form"""
@@ -42,6 +42,8 @@ class FormManager:
         """Create text area"""
         form_key = self.get_form_key(form_name)
         return st.text_area(label, key=f"{form_key}_{field_name}", **kwargs)
+    
+    # Add any other input methods you need following the same pattern
     
     def date_input(self, label, form_name, field_name, **kwargs):
         """Create date input"""

@@ -5,7 +5,6 @@ class FormManager:
     def __init__(self, page_name):
         self.page_name = page_name
         self.form_keys = {}  # Store form keys for consistency
-        self.form_counter = 0
     
     def get_form_key(self, form_name):
         """Generate consistent form key for all elements in the same form"""
@@ -68,3 +67,13 @@ class FormManager:
         """Create file uploader"""
         form_key = self.get_form_key(form_name)
         return st.file_uploader(label, key=f"{form_key}_{field_name}", **kwargs)
+    
+    def time_input(self, label, form_name, field_name, **kwargs):
+        """Create time input"""
+        form_key = self.get_form_key(form_name)
+        return st.time_input(label, key=f"{form_key}_{field_name}", **kwargs)
+    
+    def multiselect(self, label, form_name, field_name, options, **kwargs):
+        """Create multiselect"""
+        form_key = self.get_form_key(form_name)
+        return st.multiselect(label, options, key=f"{form_key}_{field_name}", **kwargs)

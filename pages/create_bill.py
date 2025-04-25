@@ -23,14 +23,12 @@ def create_new_bill():
         st.error(f"Database error: {str(e)}")
         return
 
-    # Main form
+    # Main form - using consistent form key
     with form_manager.form("bill_form", clear_on_submit=True):
         # ========== Payee Section ==========
         st.subheader("🧑 Payee Information")
-        payee = form_manager.selectbox(
+        payee = st.selectbox(
             "Select Payee*", 
-            "bill_form", 
-            "payee", 
             options=[c["name"] for c in contractors],
             help="Select contractor from the list"
         )
@@ -44,53 +42,45 @@ def create_new_bill():
         # Display payee info in columns
         col1, col2 = st.columns(2)
         with col1:
-            form_manager.text_input("S/O", "bill_form", "so", 
-                                 value=payee_data.get("parentage", ""),
-                                 disabled=True)
-            form_manager.text_input("Class", "bill_form", "class",
-                                 value=payee_data.get("class", ""),
-                                 disabled=True)
+            st.text_input("S/O", 
+                         value=payee_data.get("parentage", ""),
+                         disabled=True)
+            st.text_input("Class", 
+                         value=payee_data.get("class", ""),
+                         disabled=True)
             
         with col2:
-            form_manager.text_input("PAN", "bill_form", "pan",
-                                 value=payee_data.get("pan", ""),
-                                 disabled=True)
-            form_manager.text_input("Account No*", "bill_form", "account_no",
-                                 value=payee_data.get("account_no", ""),
-                                 disabled=True)
+            st.text_input("PAN",
+                         value=payee_data.get("pan", ""),
+                         disabled=True)
+            st.text_input("Account No*",
+                         value=payee_data.get("account_no", ""),
+                         disabled=True)
 
         # ========== Bill Details Section ==========
         st.subheader("📄 Bill Details")
-        bill_type = form_manager.selectbox(
+        bill_type = st.selectbox(
             "Bill Type*", 
-            "bill_form", 
-            "bill_type", 
             options=["Plan", "Non Plan"],
             index=0
         )
 
         # Dynamic work filters
         major_heads = sorted(list(set(w["mh"] for w in works)))
-        major_head = form_manager.selectbox(
+        major_head = st.selectbox(
             "Major Head*", 
-            "bill_form", 
-            "major_head", 
             options=major_heads
         )
         
         schemes = sorted(list(set(w["scheme"] for w in works if w["mh"] == major_head)))
-        scheme = form_manager.selectbox(
+        scheme = st.selectbox(
             "Scheme*", 
-            "bill_form", 
-            "scheme", 
             options=schemes
         )
         
         filtered_works = [w for w in works if w["mh"] == major_head and w["scheme"] == scheme]
-        work = form_manager.selectbox(
+        work = st.selectbox(
             "Work/Particulars*", 
-            "bill_form", 
-            "work", 
             options=[w["work_name"] for w in filtered_works]
         )
         
@@ -104,55 +94,43 @@ def create_new_bill():
         col3, col4 = st.columns(2)
         
         with col3:
-            billed_amount = form_manager.number_input(
+            billed_amount = st.number_input(
                 "Billed Amount (₹)*", 
-                "bill_form", 
-                "billed_amount", 
                 min_value=0.0,
                 step=0.01,
                 format="%.2f"
             )
-            deduct_payments = form_manager.number_input(
+            deduct_payments = st.number_input(
                 "Deductions (₹)", 
-                "bill_form", 
-                "deduct_payments", 
                 min_value=0.0,
                 value=0.0,
                 step=0.01,
                 format="%.2f"
             )
             payable = billed_amount - deduct_payments
-            form_manager.text_input(
+            st.text_input(
                 "Net Payable (₹)", 
-                "bill_form", 
-                "payable", 
                 value=f"{payable:,.2f}",
                 disabled=True
             )
             
         with col4:
-            income_tax_percent = form_manager.number_input(
+            income_tax_percent = st.number_input(
                 "Income Tax (%)*", 
-                "bill_form", 
-                "income_tax_percent", 
                 min_value=0.0, 
                 max_value=100.0, 
                 value=2.24,
                 step=0.01
             )
-            deposit_percent = form_manager.number_input(
+            deposit_percent = st.number_input(
                 "Deposit (%)*", 
-                "bill_form", 
-                "deposit_percent", 
                 min_value=0.0, 
                 max_value=100.0, 
                 value=10.0,
                 step=0.01
             )
-            cess_percent = form_manager.number_input(
+            cess_percent = st.number_input(
                 "Cess (%)", 
-                "bill_form", 
-                "cess_percent", 
                 min_value=0.0, 
                 max_value=100.0, 
                 value=1.0,
@@ -161,16 +139,14 @@ def create_new_bill():
 
         # ========== Additional Details ==========
         st.subheader("📝 Additional Information")
-        form_manager.text_area(
+        st.text_area(
             "Nomenclature", 
-            "bill_form", 
-            "nomenclature", 
             value=work_data.get("nomenclature", ""),
             height=100
         )
         
         # ========== Form Submission ==========
-        submitted = form_manager.form_submit_button("bill_form", "💾 Generate Bill")
+        submitted = st.form_submit_button("💾 Generate Bill")
         
         if submitted:
             # Validate required fields

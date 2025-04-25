@@ -2,36 +2,26 @@ import streamlit as st
 import pandas as pd
 import datetime
 from utils.db import get_bills, get_works
-from utils.form_manager import FormManager
 
 def show_reports():
-    # Initialize FormManager
-    form_manager = FormManager("reports")
-    
     st.header("Reports")
     
-    with form_manager.form("report_form"):
-        # Report type selection
-        report_type = form_manager.selectbox(
+    with st.form("report_form"):
+        report_type = st.selectbox(
             "Select Report Type", 
-            "report_form", 
-            "report_type",
             options=["Payment Register", "Contractor Wise Payments", 
-                    "Scheme Wise Expenditure", "Deduction Register"]
+                    "Scheme Wise Expenditure", "Deduction Register"],
+            key="report_type"
         )
         
-        # Date range selection
-        date_range = form_manager.date_input(
+        date_range = st.date_input(
             "Select Date Range", 
-            "report_form", 
-            "date_range",
             value=[datetime.date.today() - datetime.timedelta(days=30), 
-                  datetime.date.today()]
+                  datetime.date.today()],
+            key="date_range"
         )
         
-        # Generate report button
-        if form_manager.form_submit_button("report_form", "Generate Report"):
-            # Fetch data from Supabase with date filtering
+        if st.form_submit_button("Generate Report"):
             start_date, end_date = date_range
             bills = get_bills(start_date, end_date)
             works = get_works()

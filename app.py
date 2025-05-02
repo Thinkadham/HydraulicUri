@@ -65,16 +65,16 @@ def main():
         st.markdown("---")
 
         # Navigation menu - dynamically build based on role
-        base_page_options = ["Dashboard", "Create Bill", "Contractors", "Works", "Reports", "Settings"]
+        base_page_options = ["Dashboard", "Create Bill", "Contractors", "Works", "Reports"]
         admin_page_options = ["User Management"] # Pages only admins can see
 
         page_options = base_page_options
         # Check if user_role exists and is 'admin' before adding admin pages
         if st.session_state.get('user_role') == 'admin':
             # Insert User Management before Settings, for example
-            settings_index = page_options.index("Settings")
-            page_options.insert(settings_index, "User Management")
-            # Or append: page_options.extend(admin_page_options)
+            # settings_index = page_options.index("Settings")
+            # page_options.insert(settings_index, "User Management")
+            page_options.extend(admin_page_options)
 
         # Ensure current_page is valid if role changes or page is restricted
         if st.session_state.current_page not in page_options:
@@ -152,11 +152,6 @@ def main():
     user_role = st.session_state.get('user_role', 'restricted') # Default to restricted if role not set
     allowed_pages = st.session_state.get('allowed_pages', []) # Get allowed pages from session state
 
-    # --- Page Routing with Role-Based Access Control ---
-    current_page = st.session_state.current_page
-    user_role = st.session_state.get('user_role', 'restricted') # Default to restricted if role not set
-    allowed_pages = st.session_state.get('allowed_pages', []) # Get allowed pages from session state
-
     # Check access based on role and allowed_pages
     is_allowed = True
     if user_role == 'restricted':
@@ -192,10 +187,7 @@ def main():
                 # This case should technically not be reachable if sidebar logic is correct,
                 # but keeping the check is safer.
                 st.error("⛔ Access Denied.")
-        elif current_page == "Settings":
-            from pages.settings import show_settings
-            show_settings()
-        # Add other pages here if necessary
+    # Add other pages here if necessary
     # If not allowed, the error message is already displayed above, and no page content is rendered.
 
 if __name__ == "__main__":

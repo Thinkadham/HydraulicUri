@@ -10,7 +10,7 @@ def show_reports():
     st.header("Reports")
     
     # Remove explicit key from st.form
-    with st.form("reports_form"): # Use a simple string key or let Streamlit manage
+    with st.form(key="reports_form", clear_on_submit=True): # Use a simple string key or let Streamlit manage
         report_type = st.selectbox(
             "Select Report Type", 
             options=["Payment Register", "Contractor Wise Payments", 

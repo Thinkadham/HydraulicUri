@@ -15,7 +15,7 @@ def show_user_management():
 
     # --- Create New User Section ---
     st.subheader("Create New User")
-    with st.form("create_user_form", clear_on_submit=True):
+    with st.form(key="create_user_form", clear_on_submit=True):
         new_username = st.text_input("Username", key="new_user_username")
         new_password = st.text_input("Password", type="password", key="new_user_password")
         new_role = st.selectbox("Role", ["admin", "restricted"], key="new_user_role")

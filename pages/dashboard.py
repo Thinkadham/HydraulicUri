@@ -5,7 +5,6 @@ import inspect
 import os
 import time
 from utils.db import get_contractors, get_works, get_bills
-from utils.comp_key import generate_component_key
 
 # Cache data fetches
 @st.cache_data(ttl=300)
@@ -23,14 +22,6 @@ def fetch_bills():
 def show_dashboard():
     st.header("Dashboard Overview")
     
-    # Generate unique refresh key
-    refresh_key = generate_component_key(
-        component_type="button",
-        component_name="dashboard_refresh",
-        extra_context=f"exec_{time.time_ns()}"
-    )
-    
-      
     # Refresh button
     col1, col2 = st.columns([4, 1])
     with col1:
@@ -39,7 +30,6 @@ def show_dashboard():
         if st.button(
             "🔄 Refresh Data",
             help="Reload all dashboard data",
-            key=refresh_key,
             type="primary"
         ):
             st.cache_data.clear()

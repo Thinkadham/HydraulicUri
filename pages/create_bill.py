@@ -20,7 +20,7 @@ def create_new_bill():
         return
 
     # Main form
-    with st.form("bill_form", clear_on_submit=True):
+    with st.form(key="create_bill_form", clear_on_submit=True):
         # ========== Payee Section ==========
         st.subheader("🧑 Payee Information")
         payee = st.selectbox(

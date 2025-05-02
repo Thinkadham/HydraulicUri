@@ -30,7 +30,7 @@ def contractor_management():
             st.error(f"Error: {str(e)}")
 
     with add_tab:
-        with st.form("contractor_form", clear_on_submit=True):
+        with st.form(key="contractors_form", clear_on_submit=True):
             name = st.text_input("Full Name*", help="Legal name of contractor")
             parentage = st.text_input("Parentage", help="Father's/Husband's name")
             resident = st.text_input("Resident Address*", help="Current residential address")

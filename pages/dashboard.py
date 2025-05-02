@@ -1,10 +1,14 @@
 import streamlit as st
 import pandas as pd
-from utils.db import get_contractors, get_works, get_bills
 from datetime import datetime, timedelta
+import inspect
+import os
+import time
+from utils.db import get_contractors, get_works, get_bills
+from utils.comp_key import generate_component_key
 
-# Cache data fetches to improve performance
-@st.cache_data(ttl=300)  # Cache for 5 minutes
+# Cache data fetches
+@st.cache_data(ttl=300)
 def fetch_contractors():
     return get_contractors() or []
 
@@ -12,23 +16,36 @@ def fetch_contractors():
 def fetch_works():
     return get_works() or []
 
-@st.cache_data(ttl=60)  # Cache bills for just 1 minute since they change more frequently
+@st.cache_data(ttl=60)
 def fetch_bills():
     return get_bills() or []
 
 def show_dashboard():
     st.header("Dashboard Overview")
     
-    # Refresh button in the header
+    # Generate unique refresh key
+    refresh_key = generate_component_key(
+        component_type="button",
+        component_name="dashboard_refresh",
+        extra_context=f"exec_{time.time_ns()}"
+    )
+    
+      
+    # Refresh button
     col1, col2 = st.columns([4, 1])
     with col1:
         st.subheader("Key Metrics")
     with col2:
-        if st.button("🔄 Refresh Data", help="Reload all dashboard data"):
+        if st.button(
+            "🔄 Refresh Data",
+            help="Reload all dashboard data",
+            key=refresh_key,
+            type="primary"
+        ):
             st.cache_data.clear()
             st.rerun()
     
-    # Stats columns with error handling
+    # Metrics display
     metric_col1, metric_col2, metric_col3 = st.columns(3)
     
     with metric_col1:
@@ -58,7 +75,7 @@ def show_dashboard():
 
     st.markdown("---")
     
-    # Date range filter for bills
+    # Date range filter
     st.subheader("Recent Bills")
     default_end = datetime.now()
     default_start = default_end - timedelta(days=30)
@@ -69,13 +86,13 @@ def show_dashboard():
     with date_col2:
         end_date = st.date_input("To date", value=default_end)
     
-    # Visualization and data section
+    # Visualization tabs
     tab1, tab2 = st.tabs(["Bills Table", "Expenditure Trends"])
     
     with tab1:
         try:
+            bills = fetch_bills()
             if bills:
-                # Convert date strings to datetime objects for filtering
                 filtered_bills = [
                     b for b in bills 
                     if start_date <= datetime.strptime(b.get('created_at', default_end.isoformat())[:10], "%Y-%m-%d").date() <= end_date
@@ -93,8 +110,7 @@ def show_dashboard():
                         column_config={
                             "billed_amount": st.column_config.NumberColumn(
                                 "Amount",
-                                format="₹%.2f",
-                                help="Total billed amount"
+                                format="₹%.2f"
                             ),
                             "created_at": st.column_config.DateColumn(
                                 "Date",
@@ -111,24 +127,19 @@ def show_dashboard():
 
     with tab2:
         try:
+            bills = fetch_bills()
             if bills:
-                # Prepare data for visualization
                 df = pd.DataFrame(bills)
                 df['created_at'] = pd.to_datetime(df['created_at']).dt.date
                 df = df[df['created_at'].between(start_date, end_date)]
                 
                 if not df.empty:
-                    # Group by date and sum amounts
                     daily_totals = df.groupby('created_at')['billed_amount'].sum().reset_index()
-                    
-                    # Display chart
                     st.area_chart(
                         daily_totals.set_index('created_at'),
                         use_container_width=True,
-                        color="#4CAF50"  # Green color
+                        color="#4CAF50"
                     )
-                    
-                    # Show monthly total
                     monthly_total = daily_totals['billed_amount'].sum()
                     st.metric("Total Expenditure in Period", f"₹{monthly_total:,.2f}")
                 else:
@@ -138,9 +149,6 @@ def show_dashboard():
         except Exception as e:
             st.error(f"Error generating expenditure trends: {str(e)}")
 
+    
     st.markdown("---")
-    st.caption("Auto Payment System v2.0.1 | Dashboard last refreshed: " + 
-              datetime.now().strftime("%d %b %Y %H:%M:%S"))
-
-# Run the function
-show_dashboard()
+    st.caption(f"Auto Payment System v2.0.1 | Last refresh: {datetime.now().strftime('%d %b %Y %H:%M:%S')}")

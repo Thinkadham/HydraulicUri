@@ -42,7 +42,7 @@ def works_management():
             st.error(f"Error loading works: {str(e)}")
         
     with tab2:
-        with st.form("work_form", clear_on_submit=True):
+        with st.form("work_form_1", clear_on_submit=True):
             st.subheader("New Work Details")
             
             col1, col2 = st.columns(2)

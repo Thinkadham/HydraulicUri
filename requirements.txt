@@ -2,4 +2,5 @@ streamlit
 num2words
 supabase
 python-dotenv
-fpdf
+fpdf2
+xlsxwriter

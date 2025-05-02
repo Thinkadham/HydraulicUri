@@ -6,64 +6,70 @@ from utils.helpers import current_date
 def contractor_management():
     st.header("Contractor Management")
     
-    tab1, tab2 = st.tabs(["View Contractors", "Add New Contractor"])
-    
-    with tab1:
+    # Tab setup
+    list_tab, add_tab = st.tabs(["Contractor List", "Add Contractor"])
+
+    with list_tab:
         try:
             contractors = get_contractors()
             if contractors:
-                df = pd.DataFrame(contractors)
-                columns_to_show = ["name", "parentage", "resident", "registration", "class", "pan", "account_no"]
-                st.dataframe(df[columns_to_show], use_container_width=True)
-            else:
-                st.info("No contractors found in the database")
-        except Exception as e:
-            st.error(f"Error loading contractors: {str(e)}")
-        
-    with tab2:
-        with st.form("contractor_form", clear_on_submit=True):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                name = st.text_input("Name*", key="contractor_name")
-                parentage = st.text_input("Parentage/S/O", key="contractor_parentage")
-                resident = st.text_input("Resident/R/O", key="contractor_resident")
-                registration = st.text_input("Registration No", key="contractor_registration")
-                
-            with col2:
-                contractor_class = st.selectbox(
-                    "Class*", 
-                    options=["A", "B", "C", "D", "E"],
-                    key="contractor_class"
+                df = pd.DataFrame(contractors)[["name", "class", "account_no", "pan"]]
+                st.dataframe(
+                    df.rename(columns={
+                        "name": "Name",
+                        "class": "Class",
+                        "account_no": "Account Number",
+                        "pan": "PAN"
+                    }),
+                    use_container_width=True,
+                    hide_index=True
                 )
-                pan = st.text_input("PAN", key="contractor_pan")
-                gstin = st.text_input("GSTIN", key="contractor_gstin")
-                account_no = st.text_input("Account No*", key="contractor_account")
-                
-            st.markdown("**Required fields*")
-            
-            if st.form_submit_button("Add Contractor"):
-                if not name or not contractor_class or not account_no:
-                    st.error("Please fill in all required fields")
-                else:
-                    contractor_data = {
-                        "name": name,
-                        "parentage": parentage,
-                        "resident": resident,
-                        "registration": registration,
-                        "class": contractor_class,
-                        "pan": pan,
-                        "gstin": gstin,
-                        "account_no": account_no,
-                        "created_at": current_date()
-                    }
-                    
-                    try:
-                        result = insert_contractor(contractor_data)
-                        if result.data:
-                            st.success("Contractor added successfully!")
-                            st.rerun()
-                    except Exception as e:
-                        st.error(f"Error adding contractor: {str(e)}")
+            else:
+                st.info("No contractors found")
+        except Exception as e:
+            st.error(f"Error: {str(e)}")
 
-contractor_management()
+    with add_tab:
+        with st.form("contractor_form", clear_on_submit=True):
+            name = st.text_input("Full Name*", help="Legal name of contractor")
+            parentage = st.text_input("Parentage", help="Father's/Husband's name")
+            resident = st.text_input("Resident Address*", help="Current residential address")
+            registration = st.text_input("Registration No", help="Business registration number")
+            contractor_class = st.selectbox("Class*", ["A", "B", "C", "D", "E"])
+            pan = st.text_input("PAN*", max_chars=10,help="Permanent Account Number (10 characters)")
+            gstin = st.text_input("GSTIN", max_chars=15,help="15-character GST identification number")
+            account_no = st.text_input("Account No*", help="Bank account number")
+
+            submitted = st.form_submit_button("Add Contractor")
+
+            if submitted:
+                errors = []
+                if not name.strip(): errors.append("Name is required")
+                if not account_no.strip(): errors.append("Account number is required")
+                if pan and len(pan) != 10: errors.append("PAN must be 10 characters")
+
+                if not errors:
+                    try:
+                        insert_contractor({
+                            "name": name.strip(),
+                            "account_no": account_no.strip(),
+                            "class": contractor_class,
+                            "pan": pan.upper() if pan else None,
+                            "gstin": gstin.upper() if gstin else None,
+                            "registration": registration.strip() or None,                               
+                            "parentage": parentage.strip() or None,
+                            "resident": resident.strip() or None,
+                            "created_at": current_date()
+                        })
+                        st.success("Contractor added successfully!")
+                        st.balloons()
+                        st.cache_data.clear()
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Database error: {str(e)}")
+                else:
+                    for error in errors:
+                        st.error(error)
+
+if __name__ == "__main__":
+    contractor_management()

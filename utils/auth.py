@@ -1,5 +1,7 @@
 import streamlit as st
 import os
+import hashlib # For password hashing
+from .db import get_user_by_username # Import the database function
 
 def check_auth():
     """Check authentication status with fail-safe defaults"""
@@ -17,17 +19,42 @@ def login():
         password = st.text_input("Password", type="password", key="login_password")
         
         if st.form_submit_button("Login"):
-            # Get credentials from Streamlit secrets or .env
-            admin_user = os.environ.get("ADMIN_USER", "admin")  # Fallback for local dev
-            admin_pass = os.environ.get("ADMIN_PASS", "admin123")  # Fallback
-            
-            if username == admin_user and password == admin_pass:
-                st.session_state.authenticated = True
-                st.session_state.username = username
-                st.rerun()
+            if not username or not password:
+                st.warning("Please enter both username and password.")
             else:
-                st.error(f"Invalid credentials. Expected user: '{admin_user}'")
-    
+                try:
+                    user_data = get_user_by_username(username)
+
+                    if user_data:
+                        # User found, verify password
+                        stored_hash = user_data[0]['hashed_password']
+                        provided_hash = hashlib.sha256(password.encode()).hexdigest()
+
+                        if provided_hash == stored_hash:
+                            # Passwords match - Authenticate
+                            st.session_state.authenticated = True
+                            st.session_state.username = user_data[0]['username']
+                            st.session_state.user_role = user_data[0]['role'] # Store the role
+                            # Store allowed pages if the user is restricted
+                            if user_data[0]['role'] == 'restricted':
+                                st.session_state.allowed_pages = user_data[0].get('allowed_pages', ['Dashboard']) # Default to Dashboard if null/missing
+                            else:
+                                # Admins have access to all pages, don't need specific list
+                                if 'allowed_pages' in st.session_state:
+                                    del st.session_state.allowed_pages # Remove if switching from restricted to admin
+
+                            st.success("Login successful!") # Optional success message
+                            st.rerun()
+                        else:
+                            # Password incorrect
+                            st.error("Invalid username or password.")
+                    else:
+                        # User not found
+                        st.error("Invalid username or password.")
+                except Exception as e:
+                    st.error(f"An error occurred during login: {e}")
+
+
     st.markdown("---")
 
 def logout():

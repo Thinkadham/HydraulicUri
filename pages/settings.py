@@ -7,7 +7,7 @@ def show_settings():
     
     # User Management Section
     with st.expander("User Management"):
-        with st.form("user_management_form", clear_on_submit=True):
+        with st.form("user_management_form_1", clear_on_submit=True):
             st.subheader("Add New User")
             new_username = st.text_input("Username*", key="new_username")
             user_role = st.selectbox(
@@ -26,7 +26,7 @@ def show_settings():
 
     # System Configuration Section
     with st.expander("System Configuration"):
-        with st.form("system_config_form"):
+        with st.form("system_config_form_2"):
             st.subheader("Appearance Settings")
             theme = st.selectbox(
                 "Select Theme*",
@@ -48,7 +48,7 @@ def show_settings():
 
     # Backup & Restore Section
     with st.expander("Backup & Restore"):
-        with st.form("backup_form"):
+        with st.form("backup_form_3"):
             st.subheader("Data Backup")
             backup_options = st.multiselect(
                 "Select Data to Backup",

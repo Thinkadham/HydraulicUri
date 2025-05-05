@@ -33,6 +33,17 @@ def get_bills():
     if not supabase: return []
     return supabase.table("bills").select("*").execute().data
 
+def get_budget_np():
+    supabase = init_supabase()
+    if not supabase: return []
+    return supabase.table("budget_np").select("*").execute().data
+
+def get_budget_plan():
+    supabase = init_supabase()
+    supabase = init_supabase()
+    if not supabase: return []
+    return supabase.table("budget_plan").select("*").execute().data
+
 def insert_bill(bill_data):
     supabase = init_supabase()
     if not supabase: return None # Indicate failure

@@ -44,6 +44,26 @@ def get_budget_plan():
     if not supabase: return []
     return supabase.table("budget_plan").select("*").execute().data
 
+def get_work_details_from_works_plan(workcode_value):
+    supabase = init_supabase()
+    if not supabase: return []
+
+    # Fetch all records from works_plan
+    result = supabase.table("works_plan").select("*").execute()
+    all_works_plan_data = result.data
+
+    if not all_works_plan_data:
+        return [] # Return empty if no data fetched
+
+    # Filter in Python using case-insensitive and whitespace-agnostic comparison
+    filtered_data = [
+        item for item in all_works_plan_data
+        if item.get("Workcode") and workcode_value and
+           str(item.get("Workcode")).strip().lower() == str(workcode_value).strip().lower()
+    ]
+
+    return filtered_data
+
 def insert_bill(bill_data):
     supabase = init_supabase()
     if not supabase: return None # Indicate failure

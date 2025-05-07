@@ -26,7 +26,7 @@ def get_contractors():
 def get_works():
     supabase = init_supabase()
     if not supabase: return []
-    return supabase.table("works").select("*").execute().data
+    return supabase.table("works_plan").select("*").execute().data
 
 def get_bills():
     supabase = init_supabase()
@@ -69,11 +69,6 @@ def insert_bill(bill_data):
     if not supabase: return None # Indicate failure
     return supabase.table("bills").insert(bill_data).execute()
 
-def update_work_expenditure(work_id, new_expenditure):
-    supabase = init_supabase()
-    if not supabase: return None
-    return supabase.table("works").update({"expenditure": new_expenditure}).eq("id", work_id).execute()
-
 def insert_contractor(contractor_data):
     supabase = init_supabase()
     if not supabase: return None
@@ -82,7 +77,7 @@ def insert_contractor(contractor_data):
 def insert_work(work_data):
     supabase = init_supabase()
     if not supabase: return None
-    return supabase.table("works").insert(work_data).execute()
+    return supabase.table("works_plan").insert(work_data).execute()
 
 # --- User Management Functions ---
 

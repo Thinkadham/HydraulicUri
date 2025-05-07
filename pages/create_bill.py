@@ -1,7 +1,7 @@
 import streamlit as st
 import datetime
 from utils.db import (
-    get_contractors, get_works, insert_bill, update_work_expenditure,
+    get_contractors, get_works, insert_bill, 
     get_budget_np, get_budget_plan, get_work_details_from_works_plan # Import new functions
 )
 from utils.helpers import amount_in_words, calculate_deductions
@@ -79,9 +79,13 @@ def create_new_bill():
         if source_budget_table:
             major_heads_options = sorted(list(set(item.get(major_head_column) for item in source_budget_table if item.get(major_head_column))))
 
+        # Add empty option at the beginning
+        major_heads_options = [""] + major_heads_options
+
         major_head = st.selectbox(
             "Major Head*",
             options=major_heads_options, # Options filtered by Bill Type
+            index=0,  # This selects the first item (the empty string) by default
             key="major_head_select", # Unique key
             # Removed on_change callback
             help="Select the Major Head corresponding to the budget source."
@@ -288,9 +292,11 @@ def create_new_bill():
     # --- Payee Information (OUTSIDE form for dynamic update) ---
     st.markdown("---") # Border above Payee Information
     st.subheader("🧑 Payee Information")
+    payee_options = [""] + [c["name"] for c in contractors] # Add blank option
     payee = st.selectbox(
         "Select Payee*",
-        options=[c["name"] for c in contractors],
+        options=payee_options,
+        index=0, # Set default to blank
         help="Select contractor from the list",
         key="payee_select" # Added unique key
     )
@@ -314,6 +320,22 @@ def create_new_bill():
         st.markdown(f"**GSTIN:** {payee_data.get('gstin', 'N/A')}")
         st.markdown(f"**Account No:** {payee_data.get('account_no', 'N/A')}")
 
+    st.markdown("---") # Border for M Book
+    st.subheader("📖 Measurement Book")
+    # ========== Measurement Book Details ==========
+    col_mbook_1, col_mbook_2 = st.columns(2)
+    with col_mbook_1:
+                
+        mbook_no = st.text_input(
+        "M.Book No",
+        key="mbook_no"
+        )
+    with col_mbook_2:    
+        page_no = st.text_input(
+        "Page No",
+        key="page_no"
+        )
+    st.markdown("---")    
 
     # --- Main form for Financials and Submission ---
     with st.form(key="create_bill_form", clear_on_submit=True):
@@ -326,16 +348,11 @@ def create_new_bill():
         with col3:
             billed_amount = st.number_input(
                 "Billed Amount (₹)*", 
-                min_value=0.0,
-                step=0.01,
                 format="%.2f",
                 key="billed_amount"
             )
             deduct_payments = st.number_input(
-                "Deductions (₹)", 
-                min_value=0.0,
-                value=0.0,
-                step=0.01,
+                "Deduct last payments (₹)", 
                 format="%.2f",
                 key="deductions"
             )
@@ -346,45 +363,74 @@ def create_new_bill():
                 key="net_payable",
                 disabled=True
             )
+            # Restricted to input - ensure it's treated as a number input for easier parsing
+            # Or, if kept as text_input, parse carefully later.
+            # For now, let's assume it's a text_input and we'll parse its value.
+            restricted_to_input_str = st.text_input( # Renamed key for clarity if needed, but keeping "restricted_to"
+                "Restricted to (₹)",
+                value=f"{payable:,.2f}", # Default value
+                key="restricted_to",
+            )
+            cc_bill_options = [
+                "1st", "2nd", "3rd", "4th", "5th", "6th", 
+                "7th", "8th", "9th", "10th", "11th", "12th"
+            ]
+            cc_bill_selected = st.selectbox(
+                "CC Bill*", 
+                options=cc_bill_options,
+                index=0, 
+                key="cc_bill_select"
+            )
+            is_final_bill_selected = st.checkbox("Final Bill", key="is_final_bill_checkbox")
             
         with col4:
             income_tax_percent = st.number_input(
                 "Income Tax (%)*", 
                 min_value=0.0, 
-                max_value=100.0, 
-                value=2.24,
-                step=0.01,
-                key="income_tax"
+                # max_value=2.24, # Max value might change based on rules, consider removing or making flexible
+                value=2.24, # Default, consider if this should be 0 or based on rules
+                step=0.01, # Finer step for percentages
+                key="income_tax",
+                format="%.2f"
             )
             deposit_percent = st.number_input(
                 "Deposit (%)*", 
                 min_value=0.0, 
-                max_value=100.0, 
+                max_value=100.0, # Deposit can be up to 100%
                 value=10.0,
-                step=0.01,
-                key="deposit"
+                step=0.1,
+                key="deposit",
+                format="%.2f"
             )
             cess_percent = st.number_input(
                 "Cess (%)", 
                 min_value=0.0, 
                 max_value=100.0, 
                 value=1.0,
+                step=0.1,
+                key="cess",
+                format="%.2f"
+            )
+            cgst_percent = st.number_input(
+                "CGST (%)",
+                min_value=0.0,
+                max_value=100.0,
+                value=1.0, # Default as per requirement
                 step=0.01,
-                key="cess"
+                key="cgst_percent",
+                format="%.2f"
+            )
+            sgst_percent = st.number_input(
+                "SGST (%)",
+                min_value=0.0,
+                max_value=100.0,
+                value=1.0, # Default as per requirement
+                step=0.01,
+                key="sgst_percent",
+                format="%.2f"
             )
 
-        # ========== Measurement Book Details ==========
-        st.subheader("� Measurement Book")
         
-        mbook_no = st.text_input(
-            "M.Book No",
-            key="mbook_no"
-        )
-        
-        page_no = st.text_input(
-            "Page No",
-            key="page_no"
-        )
 
         # ========== Form Submission ==========
         submitted = st.form_submit_button("💾 Generate Bill")
@@ -399,11 +445,29 @@ def create_new_bill():
                 "Bill Type": bill_type, # From outside form
                 "Major Head": major_head, # From outside form
                 "Scheme/Detailed Head": scheme, # From outside form
-                "Work/Particulars": work, # Check if a work was selected
-                "Billed Amount": billed_amount
+                # "Work/Particulars": work, # Check if a work was selected - Handled below for Plan
+                "Billed Amount": billed_amount,
+                "Restricted to Amount": restricted_to_input_str # Check if it's a valid number
             }
+            
+            # Specific check for Work/Particulars for Plan bills
+            if bill_type == "Plan":
+                required_fields["Work/Particulars (Workcode)"] = work
 
-            missing_fields = [field for field, value in required_fields.items() if not value]
+            missing_fields = [field for field, value in required_fields.items() if not value and value != 0] # Allow 0 for amounts
+
+            # Validate restricted_to_input_str is a valid number
+            try:
+                # Parse the restricted_to_input_str, removing commas
+                restricted_to_amount_val = float(restricted_to_input_str.replace(",", ""))
+                if restricted_to_amount_val < 0:
+                     missing_fields.append("Restricted to Amount (must be non-negative)")
+            except ValueError:
+                missing_fields.append("Restricted to Amount (must be a valid number)")
+                # Stop further processing if this critical value is invalid
+                st.error(f"❌ Invalid input for 'Restricted to (₹)': {restricted_to_input_str}. Please enter a valid number.")
+                st.stop()
+
 
             # Add specific check for work_data consistency using the data derived outside the form
             if bill_type == "Plan" and work and work != "No works found in Budget Plan" and not work_data : # work_data is selected_nomenclature_detail
@@ -413,14 +477,22 @@ def create_new_bill():
 
 
             if missing_fields:
-                st.error(f"❌ Missing required fields: {', '.join(missing_fields)}")
+                st.error(f"❌ Missing or invalid required fields: {', '.join(missing_fields)}")
                 st.stop()
 
             # Process bill
             try:
-                # Calculate deductions
-                deductions = calculate_deductions(
-                    payable, income_tax_percent, deposit_percent, cess_percent
+                # Calculate deductions using the updated helper function
+                # scheme is already available from the selectbox outside the form
+                income_tax_val, deposit_val, cess_val, cgst_val, sgst_val, total_deduction_val, net_amount_val = calculate_deductions(
+                    payable=payable,  # Original payable (billed_amount - deduct_payments)
+                    income_tax_percent=income_tax_percent,
+                    deposit_percent=deposit_percent,
+                    cess_percent=cess_percent,
+                    restricted_to_amount=restricted_to_amount_val, # Parsed from input
+                    scheme=scheme, # From selectbox outside form
+                    cgst_percent=cgst_percent, # From new input
+                    sgst_percent=sgst_percent  # From new input
                 )
                 
                 # Prepare bill data
@@ -435,13 +507,23 @@ def create_new_bill():
                     "scheme": scheme, # This stores the selected Scheme or Detailed Head value
                     "billed_amount": billed_amount,
                     "deduct_payments": deduct_payments,
-                    "payable": payable,
-                    "income_tax_amount": deductions[0],
-                    "deposit_amount": deductions[1],
-                    "cess_amount": deductions[2],
-                    "total_deduction": deductions[3],
-                    "net_amount": deductions[4],
-                    "amount_in_words": amount_in_words(deductions[4]),
+                    "payable": payable, # Original payable
+                    "restricted_to_amount": restricted_to_amount_val, # Store the actual restricted amount used
+                    "income_tax_amount": income_tax_val,
+                    "deposit_amount": deposit_val,
+                    "cess_amount": cess_val,
+                    "cgst_amount": cgst_val, # New field
+                    "sgst_amount": sgst_val, # New field
+                    "income_tax_percent": income_tax_percent, # Storing the percentage
+                    "deposit_percent": deposit_percent,       # Storing the percentage
+                    "cess_percent": cess_percent,           # Storing the percentage
+                    "cgst_percent": cgst_percent,           # Storing the percentage
+                    "sgst_percent": sgst_percent,           # Storing the percentage
+                    "cc_bill": cc_bill_selected,            # Storing the selected CC Bill value
+                    "final_bill": is_final_bill_selected, # Storing the Final Bill status (key changed to match DB)
+                    "total_deduction": total_deduction_val, # From helper
+                    "net_amount": net_amount_val, # From helper
+                    "amount_in_words": amount_in_words(net_amount_val), # Based on new net_amount
                     "status": "Pending",
                     "created_at": datetime.datetime.now().isoformat(),
                     # Ensure work_data exists before accessing nomenclature

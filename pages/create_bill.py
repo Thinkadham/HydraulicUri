@@ -335,41 +335,101 @@ def create_new_bill():
         "Page No",
         key="page_no"
         )
-    st.markdown("---")    
+    st.markdown("---")
 
-    # --- Main form for Financials and Submission ---
-    with st.form(key="create_bill_form", clear_on_submit=True):
-        # Bill Details selectboxes are now OUTSIDE the form.
+    # --- Financial Details (Live Updating Section - OUTSIDE form) ---
+    st.subheader("💰 Financial Details")
+    live_fin_col1, live_fin_col2 = st.columns(2)
+    # Initialize variables for live updates
+    billed_amount = 0   
+    deduct_payments = 0
+    with live_fin_col1:
+        billed_amount = st.number_input(
+            "Billed Amount (₹)*",
+            #min_value=0,  # Prevents negative numbers
+            #step=1,       # Enforces integer input (no decimals)
+            value=int(billed_amount),
+            format="%d",  # Displays as an integer
+            key="billed_amount_live" # Changed key to avoid conflict if old one is cached
+        )
+        deduct_payments = st.number_input(
+            "Deduct last payments (₹)",
+            #min_value=0,
+            value=int(deduct_payments),
+            format="%d", 
+            key="deductions_live" # Changed key
+        )
 
-        # --- Financial Section (INSIDE form) ---
-        st.subheader("💰 Financial Details")
-        col3, col4 = st.columns(2)
+        # --- Validation for Billed Amount (NEW) ---
+        error_messages_limits = []
+        if bill_type == "Plan" and selected_nomenclature_detail:
+            allot_amt_val = selected_nomenclature_detail.get("Allot Amt")
+            aaa_amt_val = selected_nomenclature_detail.get("AAA Amt")
+            ts_amt_val = selected_nomenclature_detail.get("TS Amt")
+
+            if isinstance(allot_amt_val, (int, float)) and billed_amount > allot_amt_val:
+                error_messages_limits.append(f"Billed Amount (₹{billed_amount:,.0f}) cannot exceed Allot Amt (₹{allot_amt_val:,.2f}).")
+            if isinstance(aaa_amt_val, (int, float)) and billed_amount > aaa_amt_val:
+                error_messages_limits.append(f"Billed Amount (₹{billed_amount:,.0f}) cannot exceed AAA Amt (₹{aaa_amt_val:,.2f}).")
+            if isinstance(ts_amt_val, (int, float)) and billed_amount > ts_amt_val:
+                error_messages_limits.append(f"Billed Amount (₹{billed_amount:,.0f}) cannot exceed TS Amt (₹{ts_amt_val:,.2f}).")
         
-        with col3:
-            billed_amount = st.number_input(
-                "Billed Amount (₹)*", 
-                format="%.2f",
-                key="billed_amount"
-            )
-            deduct_payments = st.number_input(
-                "Deduct last payments (₹)", 
-                format="%.2f",
-                key="deductions"
-            )
-            payable = billed_amount - deduct_payments
-            st.text_input(
-                "Net Payable (₹)", 
-                value=f"{payable:,.2f}",
-                key="net_payable",
-                disabled=True
-            )
+        elif bill_type == "Non Plan" and selected_budget_entry:
+            budget_amount_val = selected_budget_entry.get("Amount")
+            if isinstance(budget_amount_val, (int, float)) and billed_amount > budget_amount_val:
+                error_messages_limits.append(f"Billed Amount (₹{billed_amount:,.0f}) cannot exceed Total Budget (₹{budget_amount_val:,.2f}).")
+
+        if error_messages_limits:
+            for msg in error_messages_limits:
+                st.error(msg)
+            # Optionally, you might want to disable the form submission button here
+            # or set a flag that prevents submission if there are errors.
+            # For now, just displaying the error.
+    
+    with live_fin_col2: # Display Net Payable in the second column for alignment
+        payable = billed_amount - deduct_payments
+        st.text_input(
+            "Net Payable (₹)",
+            value=f"{int(payable):,d}",
+            key="net_payable_display", # Changed key
+            disabled=True
+        )
+        # Placeholder for alignment or future use if needed in this column
+        st.write("") # Adds some space, or can be removed
+
+    st.markdown("---") # Separator before the form
+
+    # --- Main form for Remaining Financials and Submission ---
+    with st.form(key="create_bill_form", clear_on_submit=True):
+        # Bill Details selectboxes are OUTSIDE the form.
+        # Billed Amount, Deduct Payments, and Net Payable are OUTSIDE the form for live updates.
+
+        # --- Remaining Financial Section (INSIDE form) ---
+        # st.subheader("💰 Financial Details") # Subheader is now outside
+        form_fin_col1, form_fin_col2 = st.columns(2)
+
+        # --- Determine GST applicability based on Allot Amt for Plan bills ---
+        apply_gst = False
+        default_gst_value = 0
+        gst_disabled_status = True
+
+        if bill_type == "Plan" and selected_nomenclature_detail:
+            allot_amt_for_gst = selected_nomenclature_detail.get("Allot Amt")
+            if isinstance(allot_amt_for_gst, (int, float)) and allot_amt_for_gst >= 250000: # Condition updated here
+                apply_gst = True
+                default_gst_value = 1 # Default to 1% if applicable
+                gst_disabled_status = False
+        # For Non Plan bills, or if conditions for Plan bill GST are not met,
+        # apply_gst remains False, default_gst_value = 0, gst_disabled_status = True.
+        
+        with form_fin_col1:
             # Restricted to input - ensure it's treated as a number input for easier parsing
             # Or, if kept as text_input, parse carefully later.
             # For now, let's assume it's a text_input and we'll parse its value.
-            restricted_to_input_str = st.text_input( # Renamed key for clarity if needed, but keeping "restricted_to"
+            restricted_to_input_str = st.text_input( 
                 "Restricted to (₹)",
-                value=f"{payable:,.2f}", # Default value
-                key="restricted_to",
+                value=f"{int(payable):,d}", # changed to int
+                key="restricted_to_form", # Changed key
             )
             cc_bill_options = [
                 "1st", "2nd", "3rd", "4th", "5th", "6th", 
@@ -379,56 +439,58 @@ def create_new_bill():
                 "CC Bill*", 
                 options=cc_bill_options,
                 index=0, 
-                key="cc_bill_select"
+                key="cc_bill_select_form" # Changed key
             )
-            is_final_bill_selected = st.checkbox("Final Bill", key="is_final_bill_checkbox")
+            is_final_bill_selected = st.checkbox("Final Bill", key="is_final_bill_checkbox_form") # Changed key
             
-        with col4:
-            income_tax_percent = st.number_input(
-                "Income Tax (%)*", 
-                min_value=0.0, 
-                # max_value=2.24, # Max value might change based on rules, consider removing or making flexible
-                value=2.24, # Default, consider if this should be 0 or based on rules
-                step=0.01, # Finer step for percentages
-                key="income_tax",
-                format="%.2f"
+        with form_fin_col2:
+            income_tax_percent = st.select_slider(
+                "Income Tax (%)*",
+                options=[0.0,1.0, 2.0, 2.24],
+                value=2.24,  # default value
+                key="income_tax"
             )
-            deposit_percent = st.number_input(
+            deposit_percent = st.slider(
                 "Deposit (%)*", 
-                min_value=0.0, 
-                max_value=100.0, # Deposit can be up to 100%
-                value=10.0,
-                step=0.1,
+                min_value=0, 
+                max_value=100, # Deposit can be up to 100%
+                value=10,
+                step=1,
                 key="deposit",
-                format="%.2f"
+                format="%d"
             )
             cess_percent = st.number_input(
                 "Cess (%)", 
-                min_value=0.0, 
-                max_value=100.0, 
-                value=1.0,
-                step=0.1,
+                min_value=0, 
+                max_value=1, 
+                value=1,
+                step=1,
                 key="cess",
-                format="%.2f"
+                format="%d"
             )
             cgst_percent = st.number_input(
                 "CGST (%)",
-                min_value=0.0,
-                max_value=100.0,
-                value=1.0, # Default as per requirement
-                step=0.01,
-                key="cgst_percent",
-                format="%.2f"
+                min_value=0,
+                max_value=1, # Assuming 1 means 1% as per previous structure
+                value=default_gst_value, 
+                step=1,
+                key="cgst_percent_input", # Changed key to ensure re-render
+                format="%d",
+                disabled=gst_disabled_status
             )
             sgst_percent = st.number_input(
                 "SGST (%)",
-                min_value=0.0,
-                max_value=100.0,
-                value=1.0, # Default as per requirement
-                step=0.01,
-                key="sgst_percent",
-                format="%.2f"
+                min_value=0,
+                max_value=1, # Assuming 1 means 1%
+                value=default_gst_value,
+                step=1,
+                key="sgst_percent_input", # Changed key
+                format="%d",
+                disabled=gst_disabled_status
             )
+            if gst_disabled_status:
+                #st.caption("GST not applicable")
+                st.warning("GST not applicable", icon="🚫")
 
         
 
@@ -474,6 +536,29 @@ def create_new_bill():
                  missing_fields.append("Valid Nomenclature selection from works_plan (selection mismatch or not found)")
             elif bill_type == "Plan" and (not work or work == "No works found in Budget Plan"):
                  missing_fields.append("Valid Work/Particulars (Workcode from budget_plan)")
+            
+            # --- Re-check Billed Amount validation on submission to prevent saving if errors exist ---
+            # This is a simplified re-check. A more robust way would be to use a session state flag
+            # that is set when the live validation fails.
+            final_validation_errors = []
+            if bill_type == "Plan" and selected_nomenclature_detail:
+                allot_amt_s = selected_nomenclature_detail.get("Allot Amt")
+                aaa_amt_s = selected_nomenclature_detail.get("AAA Amt")
+                ts_amt_s = selected_nomenclature_detail.get("TS Amt")
+                if isinstance(allot_amt_s, (int, float)) and billed_amount > allot_amt_s:
+                    final_validation_errors.append(f"Billed Amount exceeds Allot Amt.")
+                if isinstance(aaa_amt_s, (int, float)) and billed_amount > aaa_amt_s:
+                    final_validation_errors.append(f"Billed Amount exceeds AAA Amt.")
+                if isinstance(ts_amt_s, (int, float)) and billed_amount > ts_amt_s:
+                    final_validation_errors.append(f"Billed Amount exceeds TS Amt.")
+            elif bill_type == "Non Plan" and selected_budget_entry:
+                budget_amount_s = selected_budget_entry.get("Amount")
+                if isinstance(budget_amount_s, (int, float)) and billed_amount > budget_amount_s:
+                    final_validation_errors.append(f"Billed Amount exceeds Total Budget.")
+            
+            if final_validation_errors:
+                missing_fields.extend(final_validation_errors)
+            # --- End of Billed Amount Re-check ---
 
 
             if missing_fields:
@@ -527,7 +612,7 @@ def create_new_bill():
                     "status": "Pending",
                     "created_at": datetime.datetime.now().isoformat(),
                     # Ensure work_data exists before accessing nomenclature
-                    "nomenclature": work_data.get("nomenclature", "") if work_data else ""
+                    "nomenclature": work_data.get("Nomenclature", "") if work_data else ""
                 }
 
                 # Save to database (ensure work_id is handled if None by the DB/API)

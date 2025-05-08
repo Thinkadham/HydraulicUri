@@ -340,25 +340,52 @@ def create_new_bill():
     # --- Financial Details (Live Updating Section - OUTSIDE form) ---
     st.subheader("💰 Financial Details")
     live_fin_col1, live_fin_col2 = st.columns(2)
-    # Initialize variables for live updates
-    billed_amount = 0   
-    deduct_payments = 0
+        
     with live_fin_col1:
+        
         billed_amount = st.number_input(
             "Billed Amount (₹)*",
-            #min_value=0,  # Prevents negative numbers
-            #step=1,       # Enforces integer input (no decimals)
-            value=int(billed_amount),
-            format="%d",  # Displays as an integer
-            key="billed_amount_live" # Changed key to avoid conflict if old one is cached
+            value=0, 
+            step=1000, 
+            placeholder="Enter Billed Amount",
+            key="billed_amount_input" # Unique key for this input
         )
+        
         deduct_payments = st.number_input(
             "Deduct last payments (₹)",
-            #min_value=0,
-            value=int(deduct_payments),
-            format="%d", 
-            key="deductions_live" # Changed key
+            value=0, 
+            step=1000, 
+            placeholder="Enter Last Payments",
+            key="deduct_payments_input" # Unique key for this input
         )
+
+        # billed_amount_str = st.text_input(
+        #     "Billed Amount (₹)*",
+        #     value="0", # Initial value as string
+        #     key="billed_amount_str_input" # New key
+        # )
+        # try:
+        #     billed_amount = int(billed_amount_str)
+        #     if billed_amount < 0:
+        #         st.error("Billed Amount must be a non-negative whole number.")
+        #         billed_amount = 0 # Default to 0 if negative
+        # except ValueError:
+        #     st.error("Invalid input for Billed Amount. Please enter a whole number (e.g., 1000).")
+        #     billed_amount = 0 # Default to 0 if not a valid integer
+
+        # deduct_payments_str = st.text_input(
+        #     "Deduct last payments (₹)",
+        #     value="0", # Initial value as string
+        #     key="deduct_payments_str_input" # New key
+        # )
+        # try:
+        #     deduct_payments = int(deduct_payments_str)
+        #     if deduct_payments < 0:
+        #         st.error("Deduct last payments must be a non-negative whole number.")
+        #         deduct_payments = 0 # Default to 0 if negative
+        # except ValueError:
+        #     st.error("Invalid input for Deduct last payments. Please enter a whole number (e.g., 500).")
+        #     deduct_payments = 0 # Default to 0 if not a valid integer
 
         # --- Validation for Billed Amount (NEW) ---
         error_messages_limits = []
